@@ -236,5 +236,5 @@ README.md
 ---
 
 *Data is not reality. But it is all we have.*
-*Every schema is a map. Maps are drawn for travellers.*
+*Every schema is a map. Maps are drawn for travellers, they are drawn for navigators, they are drawn for explorers. They all need a different map*
 *Define it in the schema or it does not exist.*

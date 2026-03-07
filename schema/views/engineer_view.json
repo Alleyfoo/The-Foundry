@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Engineer View Schema",
+  "description": "What engineering sees: full technical specifications, mechanical properties, dimensional data, standards. No pricing, supplier, or inventory data.",
+  "type": "object",
+  "required": ["product_code", "description", "material", "standard", "diameter_mm", "length_mm"],
+  "properties": {
+    "product_code": {
+      "type": "string",
+      "description": "Product identifier"
+    },
+    "product_family": {
+      "type": "string",
+      "description": "Product category"
+    },
+    "description": {
+      "type": "string",
+      "description": "Product name"
+    },
+    "standard": {
+      "type": "string",
+      "description": "Applicable standard (ISO, DIN, ETA)"
+    },
+    "material": {
+      "type": "string",
+      "description": "Base material"
+    },
+    "finish": {
+      "type": "string",
+      "description": "Surface finish / coating"
+    },
+    "grade": {
+      "type": ["string", "null"],
+      "description": "Strength grade"
+    },
+    "thread_type": {
+      "type": ["string", "null"],
+      "description": "Thread coverage"
+    },
+    "drive_type": {
+      "type": ["string", "null"],
+      "description": "Drive type"
+    },
+    "diameter_mm": {
+      "type": "number",
+      "description": "Nominal diameter (mm)"
+    },
+    "length_mm": {
+      "type": "number",
+      "description": "Total length (mm)"
+    },
+    "thread_pitch_mm": {
+      "type": ["number", "null"],
+      "description": "Thread pitch (mm)"
+    },
+    "head_height_mm": {
+      "type": ["number", "null"],
+      "description": "Head height (mm)"
+    },
+    "across_flats_mm": {
+      "type": ["number", "null"],
+      "description": "Across-flats dimension (mm)"
+    },
+    "weight_kg": {
+      "type": "number",
+      "description": "Unit weight (kg)"
+    },
+    "tensile_strength_mpa": {
+      "type": ["integer", "null"],
+      "description": "Minimum tensile strength (MPa)"
+    },
+    "yield_strength_mpa": {
+      "type": ["integer", "null"],
+      "description": "Minimum yield strength (MPa)"
+    },
+    "hardness_hrc": {
+      "type": ["string", "null"],
+      "description": "Rockwell C hardness range"
+    },
+    "operating_temp_min_c": {
+      "type": "integer",
+      "description": "Min operating temperature (°C)"
+    },
+    "operating_temp_max_c": {
+      "type": "integer",
+      "description": "Max operating temperature (°C)"
+    },
+    "corrosion_resistance": {
+      "type": "string",
+      "description": "Corrosion resistance classification"
+    },
+    "application": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Intended application areas"
+    },
+    "approved_uses": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Approved environmental contexts"
+    },
+    "country_of_origin": {
+      "type": "string",
+      "description": "Country of manufacture"
+    }
+  },
+  "_view_metadata": {
+    "source_schema": "source_schema.json",
+    "excluded_fields": [
+      "unit_price_eur", "price_tier_100", "price_tier_1000", "price_tier_10000",
+      "lead_time_days", "moq",
+      "supplier_code", "supplier_name",
+      "inventory_qty", "reorder_point", "reorder_qty",
+      "warehouse_location", "last_receipt_date",
+      "defined_by", "defined_at", "version", "review_date"
+    ],
+    "reason": "Engineers need full technical and mechanical specs. No commercial pricing, supplier relationships, or inventory logistics."
+  }
+}
