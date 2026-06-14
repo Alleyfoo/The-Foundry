@@ -65,10 +65,13 @@ Ordered by how much each makes the demo *true*, not just prettier.
 
 ---
 
-## Visual plan
+## Visual plan  ✅ DONE (commit 6e99b35)
 
-> Handed to a dedicated design pass (Claude designer) later. The functional UI is in
-> place; this is the reskin brief.
+> Reskinned to match the designer's mockup (`dashboard/`, gitignored). Light theme,
+> Archivo type, navy/orange palette. Implemented in `ui.py` (tokens + CSS +
+> component renderers) and wired through `streamlit_app.py`. Verified with Playwright
+> screenshots against the mockup. The graphviz governance map was done with styled
+> HTML flow cards instead — same effect, no extra dependency.
 
 Make it look like the deck. The current UI is functional but plain (tables + emoji).
 
