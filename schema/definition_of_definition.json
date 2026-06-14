@@ -75,7 +75,7 @@
     },
     "who_responsible": {
       "type": "object",
-      "description": "Q3: Who is responsible — who creates, who can change, who resolves conflicts",
+      "description": "Q3: Who is responsible — who creates, who can change, who resolves conflicts. Responsibility is declared independently of access; the system compares the two and exposes mismatches.",
       "required": ["creator_role", "editor_roles"],
       "properties": {
         "creator_role": {
@@ -90,6 +90,25 @@
         "conflict_resolver": {
           "type": "string",
           "description": "Role that resolves conflicts when values disagree"
+        },
+        "responsibility_assignments": {
+          "type": "array",
+          "description": "Explicit responsibility claims per role. A role with access but no assignment here is an access-without-responsibility mismatch.",
+          "items": {
+            "type": "object",
+            "required": ["role", "responsibility"],
+            "properties": {
+              "role": {
+                "type": "string",
+                "description": "The actor (role, team, system, or agent) holding this responsibility"
+              },
+              "responsibility": {
+                "type": "string",
+                "enum": ["owns", "maintains", "reviews", "validates", "approves"],
+                "description": "The kind of responsibility this actor holds for the field"
+              }
+            }
+          }
         },
         "review_cycle": {
           "type": "string",
@@ -117,9 +136,9 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "enum": ["read", "write", "delete", "history"]
+                  "enum": ["view", "edit", "approve", "export", "delete", "override", "read", "write", "history"]
                 },
-                "description": "Permitted operations for this role"
+                "description": "Permitted operations for this role. Canonical access-first verbs: view, edit, approve, export, delete, override. (read/write/history retained for backward compatibility — read≈view, write≈edit.)"
               }
             }
           }
