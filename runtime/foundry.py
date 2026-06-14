@@ -146,21 +146,23 @@ class Foundry:
         self.shadow.observe_task_end("foundry", "impact", success=True,
                                      bottleneck_count=len(bottlenecks))
 
-        # 4. Approval routing
+        # 3b. Impact statements — what each change touches, and the risk
+        self.shadow.observe_task_start("foundry", "impact_statements")
+        obj_by_id = {o["object_id"]: o for o in objects}
+        truth_touching = {b["id"] for b in boxes["boxes"] if b.get("touches_live_truth")}
+        impact = self._impact_statements(objects, obj_by_id, truth_touching)
+        impact_by_id = {i["object_id"]: i for i in impact}
+        self.store.write_json(ctx.run_id, "impact.json", impact)
+        self.shadow.observe_task_end("foundry", "impact_statements", success=True,
+                                     high_risk=sum(1 for i in impact if i["risk"] == "high"))
+
+        # 4. Approval routing — by confidence, risk, and ownership
         self.shadow.observe_task_start("foundry", "approval_routing")
-        approvals = [
-            {
-                "object_id": o["object_id"],
-                "title": o["title"],
-                "box": o["box"],
-                "owner_team": o["owner_team"],
-                "approver_role": o.get("approver_role"),
-                "state": o["state"],
-                "routed_to": o.get("approver_role") or "(no approver)",
-            }
-            for o in objects
-            if o.get("approver_role") and o.get("commitment") != "truth"
-        ]
+        approvals = []
+        for o in objects:
+            if not o.get("approver_role") or o.get("commitment") == "truth":
+                continue
+            approvals.append(self._route_approval(o, impact_by_id, box_access))
         self.store.write_json(ctx.run_id, "approvals.json", approvals)
         self.shadow.observe_task_end("foundry", "approval_routing", success=True,
                                      pending_approvals=len(approvals))
@@ -213,6 +215,7 @@ class Foundry:
             "validation": report,
             "triage": triage,
             "bottlenecks": bottlenecks,
+            "impact": impact,
             "approvals": approvals,
             "committed": committed,
             "in_flight": in_flight,
@@ -220,6 +223,95 @@ class Foundry:
             "lenses": lenses,
             "drift_score": self.shadow.drift_score,
             "metrics": self.shadow.summary(),
+        }
+
+    # ------------------------------------------------------------------
+    def _impact_statements(
+        self,
+        objects: list[dict[str, Any]],
+        obj_by_id: dict[str, dict[str, Any]],
+        truth_touching: set[str],
+    ) -> list[dict[str, Any]]:
+        """For each object: what it touches, whether it affects truth, and the risk."""
+        out = []
+        for o in objects:
+            downstream = o.get("downstream", [])
+            touches = [obj_by_id[d]["title"] for d in downstream if d in obj_by_id]
+            affects_truth = any(
+                obj_by_id.get(d, {}).get("commitment") == "truth" for d in downstream
+            )
+
+            # Risk: explicit additive score, then banded.
+            score = 0
+            if o["box"] in truth_touching:
+                score += 2
+            conf = o.get("confidence", 1.0)
+            score += 2 if conf < CONFIDENCE_LOW else 1 if conf < CONFIDENCE_HIGH else 0
+            if affects_truth:
+                score += 1
+            if o.get("state") == "blocked":
+                score += 1
+            risk = "high" if score >= 4 else "medium" if score >= 2 else "low"
+
+            verb = {"create": "Creating", "modify": "Modifying", "control": "Approving",
+                    "plan": "Planning", "reference": "Referencing"}.get(o["box"], "Changing")
+            parts = [f"{verb} '{o['title']}' touches {len(downstream)} downstream object(s)."]
+            if affects_truth:
+                parts.append("Affects committed truth.")
+            if conf < CONFIDENCE_HIGH:
+                parts.append(f"Triage confidence is {conf}.")
+            if o.get("state") == "blocked":
+                parts.append("Currently blocked.")
+
+            out.append({
+                "object_id": o["object_id"],
+                "title": o["title"],
+                "box": o["box"],
+                "touches": touches,
+                "downstream_count": len(downstream),
+                "affects_truth": affects_truth,
+                "risk": risk,
+                "statement": " ".join(parts),
+            })
+        return out
+
+    def _route_approval(
+        self,
+        o: dict[str, Any],
+        impact_by_id: dict[str, dict[str, Any]],
+        box_access: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Route a pending object by confidence, risk, and ownership."""
+        risk = impact_by_id.get(o["object_id"], {}).get("risk", "low")
+        conf = o.get("confidence", 1.0)
+        aging = o.get("aging_days", 0)
+        approver = o.get("approver_role")
+
+        # Urgency changes priority, not truthfulness.
+        priority = "high" if (aging >= AGING_ALERT_DAYS or risk == "high") else "normal"
+
+        # Is the approver actually authorised to act in Control?
+        ctrl = box_access.get("control", {})
+        ctrl_allowed = {ctrl.get("primary")} | set(ctrl.get("also", []))
+        if o["box"] == "control" and approver not in ctrl_allowed:
+            recommendation = "reroute — approver not authorised for control"
+        elif risk == "high" or conf < CONFIDENCE_LOW:
+            recommendation = "needs human review"
+        elif risk == "low" and conf >= CONFIDENCE_HIGH and o["box"] != "control":
+            recommendation = "fast-track eligible"
+        else:
+            recommendation = "standard review"
+
+        return {
+            "object_id": o["object_id"],
+            "title": o["title"],
+            "box": o["box"],
+            "owner_team": o["owner_team"],
+            "routed_to": approver or "(no approver)",
+            "confidence": conf,
+            "risk": risk,
+            "priority": priority,
+            "recommendation": recommendation,
         }
 
     # ------------------------------------------------------------------

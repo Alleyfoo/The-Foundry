@@ -105,7 +105,12 @@ TRANSITIONS: dict[str, dict[str, Any]] = {
     "block":    {"from": ["draft", "active", "pending"], "to": "blocked"},
     "unblock":  {"from": ["blocked"], "to": "active"},
     "commit":   {"from": ["active"], "to": "active", "commitment": "truth", "needs_workflow": True},
+    "mark_eol": {"from": ["active"], "to": "active", "lifecycle": "end_of_life"},
     "retire":   {"from": ["active", "blocked"], "to": "retired"},
+    # Disposition — how an object leaves (the deck's afterlife).
+    "archive":          {"from": ["retired"], "to": "retired", "lifecycle": "archived"},
+    "scrap":            {"from": ["retired"], "to": "retired", "lifecycle": "scrap"},
+    "link_replacement": {"from": ["retired"], "to": "retired", "lifecycle": "replacement_linked"},
 }
 
 
@@ -156,6 +161,8 @@ def apply_action(
     obj["state"] = rule["to"]
     if "commitment" in rule:
         obj["commitment"] = rule["commitment"]
+    if "lifecycle" in rule:
+        obj["lifecycle"] = rule["lifecycle"]
     if action == "commit":
         obj["commitment"] = "truth"
         obj["system_of_record_ref"] = _sor_ref(obj)

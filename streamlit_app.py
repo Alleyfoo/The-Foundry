@@ -107,7 +107,8 @@ c5.metric("Needs a human", sum(1 for t in result["triage"] if t["needs_human"]))
 
 tabs = st.tabs([
     "Intake", "Actions", "The Story", "The Five Boxes", "Governance Map",
-    "Bottlenecks & Aging", "Access Mismatches", "Monitoring Lenses", "Audit Trail",
+    "Bottlenecks & Aging", "Impact & Approvals", "Access Mismatches",
+    "Monitoring Lenses", "Audit Trail",
 ])
 
 # --- Intake (drop in chaos) ---
@@ -212,6 +213,14 @@ with tabs[4]:
         if in_stream:
             st.dataframe(to_df(in_stream, OBJ_COLS), width="stretch",
                          height=min(40 + 35 * len(in_stream), 340))
+    afterlife = [o for o in objects if o.get("lifecycle", "none") != "none"]
+    if afterlife:
+        st.markdown("#### Lifecycle / afterlife")
+        st.caption("How objects leave: end-of-life, scrap, replacement-linked, archived.")
+        st.dataframe(
+            to_df(afterlife, ["object_id", "title", "lifecycle", "state", "owner_team"]),
+            width="stretch", height=min(40 + 35 * len(afterlife), 240),
+        )
 
 # --- Bottlenecks & Aging ---
 with tabs[5]:
@@ -229,8 +238,31 @@ with tabs[5]:
                 f"aging **{b['aging_days']}d** · downstream impact: {b['downstream_count']}"
             )
 
-# --- Access Mismatches ---
+# --- Impact & Approvals ---
 with tabs[6]:
+    st.subheader("Impact & approval routing")
+    st.caption("Route by confidence, risk, and ownership. Urgency changes priority, not truthfulness.")
+    st.markdown("**Pending approvals**")
+    if result["approvals"]:
+        st.dataframe(
+            to_df(result["approvals"],
+                  ["object_id", "title", "box", "routed_to", "confidence",
+                   "risk", "priority", "recommendation"]),
+            width="stretch",
+        )
+    else:
+        st.success("Nothing awaiting approval.")
+    st.markdown("**Impact statements** (highest risk first)")
+    order = {"high": 0, "medium": 1, "low": 2}
+    imp_sorted = sorted(result["impact"], key=lambda i: order[i["risk"]])
+    st.dataframe(
+        to_df(imp_sorted,
+              ["object_id", "box", "risk", "affects_truth", "downstream_count", "statement"]),
+        width="stretch", height=360,
+    )
+
+# --- Access Mismatches ---
+with tabs[7]:
     st.subheader("Where access and responsibility disagree, the Foundry exposes it")
     st.caption("Access is a claim about responsibility. The system does not paper over the gap.")
     ms = result["mismatches"]
@@ -251,7 +283,7 @@ with tabs[6]:
             )
 
 # --- Monitoring Lenses ---
-with tabs[7]:
+with tabs[8]:
     st.subheader("Same objects, different maps")
     st.caption("Customer · Sales · Product · Operations · Finance — each lens shows what that function owns.")
     lens_tabs = st.tabs([l.title() for l in result["lenses"]])
@@ -264,7 +296,7 @@ with tabs[7]:
                 st.info("No objects in this lens.")
 
 # --- Audit Trail ---
-with tabs[8]:
+with tabs[9]:
     st.subheader("The invisible eye — every step, logged")
     st.caption("Trusted outcomes: traceable, compliant, auditable.")
     st.markdown("**System-of-record events** (intake, actions, commits):")
