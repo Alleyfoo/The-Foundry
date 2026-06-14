@@ -1,103 +1,69 @@
 # The Access Model
 
-How The Spring models a company as an access/responsibility graph, and the
-mismatches it is built to expose.
+How The Foundry models a company through access, and the mismatches it exposes.
 
-This document is the conceptual reference. The contract it describes lives in
-[`schema/definition_of_definition.json`](../schema/definition_of_definition.json)
-— the meta-schema every field must answer.
+This is the conceptual reference. The contract lives in the schema
+([`object_schema.json`](../schema/object_schema.json),
+[`boxes.json`](../schema/boxes.json), [`roles.json`](../schema/roles.json)) and
+the detection lives in [`runtime/foundry.py`](../runtime/foundry.py).
 
 ---
 
-## Why access-first
+## Access, not titles
 
-A job title says what someone is *called*. It does not tell you what they can
-*affect*. Two people with the same title often have very different access, and
-two people with very different titles often touch the same field. If you want to
-know how data actually gets created, changed, and broken, follow the access — not
-the org chart.
+An org chart shows a company as boxes of titles. It does not tell you what anyone
+can *affect*. The Foundry describes the company through **access**: which of the
+five governed boxes a role can act in.
 
-So The Spring describes the company as a graph:
-
-- **Actors** (person, team, system, agent) hold
-- **Permissions** over
-- **Objects** (product, field, schema, workflow, view, file), and are expected to
-  carry
-- **Responsibilities**, which **Evidence** can confirm or contradict.
+- **Actors** own objects (`owner_team`) and approve changes (`approver_role`).
+- **Objects** flow through **boxes** (create / modify / plan / control / reference).
+- **Roles** have *gravity* — a dominant box — but touch adjacent boxes too.
+- **Evidence** (the `shadow.jsonl` audit trail) records what actually happened.
 
 ## Access as a claim, not a guarantee
 
 The central rule:
 
 > Access should be treated as a claim about responsibility. If access and
-> responsibility do not match, the system should expose the mismatch.
+> responsibility do not match, the system exposes the mismatch.
 
-We deliberately do **not** say "access equals responsibility." Access is cheap to
-grant and easy to forget. Responsibility has to be declared. The value of the
-model is in the *delta* between the two — and surfacing that delta instead of
-hiding it.
-
----
-
-## The five primitives
-
-| Primitive | Schema home | Notes |
-|---|---|---|
-| **Actor** | `who_has_access.access_rules[].role`, `who_responsible.*` | role / team / system / agent |
-| **Object** | the field itself, plus `where.owning_system` | what is being acted on |
-| **Permission** | `who_has_access.access_rules[].permissions` | view, edit, approve, export, delete, override |
-| **Responsibility** | `who_responsible.responsibility_assignments[]` | owns, maintains, reviews, validates, approves |
-| **Evidence** | `shadow.jsonl` audit trail | logs, changes, approvals, exceptions, comments |
-
-`who_has_access` (Permission) and `who_responsible` (Responsibility) are separate
-blocks **on purpose**. Keeping them separate is what makes a mismatch detectable.
+Access is recorded in `roles.json` (`box_access`: who can act in each box).
+Responsibility is recorded on each object (`owner_team`, `approver_role`). Because
+they are separate, they can disagree — and that delta is the point.
 
 ---
 
-## The mismatches
+## The mismatches the pipeline detects
 
-Each mismatch below names the schema fields it compares. (Detection logic is out
-of scope for this pass — this is the specification a detector would implement.)
+Each is produced by `Foundry._detect_mismatches` and surfaced in the app's
+**Access Mismatches** tab and the shadow log.
 
-### 1. Access without responsibility
-An actor appears in `access_rules` with `edit`/`approve`/`override`/`delete`, but
-holds no entry in `responsibility_assignments`.
-**Reading:** someone can change it; no one has claimed they keep it right.
+### 1. Approval without authority — `approval_without_authority`
+A `control`-box object is routed to an `approver_role` that has no control access
+in `roles.json` (`box_access.control` = Manager, Director).
+**Reading:** someone is approving a change they are not authorised to govern.
 
-### 2. Responsibility without access
-An actor is listed in `responsibility_assignments` (e.g. `maintains`) but has no
-corresponding `access_rules` entry granting the permission that responsibility
-implies.
-**Reading:** someone is accountable but cannot act.
+### 2. Ownership without flow — `ownership_without_flow`
+An object is `blocked`. Its `owner_team` is accountable, but it cannot move.
+**Reading:** responsibility exists, but the work is stuck — a bottleneck with a name.
 
-### 3. Approval without evidence
-A field's lifecycle shows an approval, but `shadow.jsonl` holds no logged event
-backing it.
-**Reading:** a sign-off with nothing behind it.
+### 3. Editable without an approver — `editable_without_approver`
+A box that can touch live truth (create / modify / control) has no `approver_role`
+and is not yet committed.
+**Reading:** a change can reach truth with nobody required to sign off.
 
-### 4. Ownership without visibility
-An actor holds `owns` in `responsibility_assignments` but lacks `view` on the
-object.
-**Reading:** an owner who cannot see the state of what they own.
-
-### 5. Editable fields without a declared owner
-Some actor has `edit` in `access_rules`, but no actor holds `owns` in
-`responsibility_assignments`.
-**Reading:** change is possible; ownership is blank.
-
-### 6. High-risk fields without review rules
-`why_exists.impact_if_wrong` is `safety_critical` or `financial_loss`, but
-`who_responsible.review_cycle` is `never` (or no actor holds `reviews`).
-**Reading:** the field can cause real harm and nothing schedules a look at it.
+### 4. Low-confidence truth — `low_confidence_truth`
+An object is committed as `truth` while its triage `confidence` was below the high
+band (0.7).
+**Reading:** something was locked in as truth that the Foundry was unsure about.
 
 ---
 
-## What this is *not*
+## Why these, and not more
 
-This is a practical product-data governance model. It is not an ideological or
-political statement about organizations. The claim is narrow and operational:
-*when a field is wrong, you should be able to find who was responsible, check it
-against what they could actually do, and see the evidence.* Everything here
-serves that.
+The model stays small on purpose: *simple boxes, clear routing, lower chaos.* Each
+mismatch maps to a question a real operator asks when a field is wrong — *who could
+change this, who was supposed to own it, who approved it, and how sure were we?*
+The Foundry answers all four from the structured record, not from an org chart.
 
-> Org charts show hierarchy. Access maps show how work actually happens.
+> Org charts show hierarchy. The Foundry shows how work actually happens.

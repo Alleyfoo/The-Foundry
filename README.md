@@ -1,142 +1,130 @@
-# The Spring
+# 🔥 The Foundry
 
-**An access-first model for product data responsibility.**
+**Turning incoming business chaos into trusted, structured change.**
 
-Most business systems describe people through job titles and departments, but
-day-to-day data work happens through access: who can see a field, who can change
-it, who can approve it, who maintains it, and who is accountable when it becomes
-wrong.
+Most business systems describe a company through job titles and departments. But
+day-to-day reality is messier than an org chart: requests arrive by email, PDF,
+Excel, and chat; things get stuck; nobody is sure who owns what. The Foundry is a
+governance layer that takes that incoming chaos and forges it into trusted,
+structured, *owned* change before it is allowed to become truth.
 
-> Org charts show hierarchy. Access maps show how work actually happens.
+> Org charts show hierarchy. The Foundry shows the organisation through **access** —
+> who can act on what, as objects flow from chaos toward trusted truth.
 
----
-
-## The idea in three lines
-
-- A job title says what someone is **called**.
-- Access shows what they can **affect**.
-- Responsibility should be **explicit** wherever access exists.
-
-A company is not really a tree of titles. It is a graph of actors who can touch
-objects, and of responsibilities that are supposed to sit behind that access.
-The Spring models the graph, not the org chart.
-
-## The one distinction that matters
-
-Access does **not** automatically equal responsibility. Treating them as the
-same thing is how accountability quietly disappears.
-
-Instead, The Spring treats **access as a claim about responsibility**. If someone
-can edit a field, that is an implicit claim that someone is responsible for it
-being right. When access and responsibility do not match, the system does not
-paper over it — **it exposes the mismatch.**
+> *Users see tools. The system sees governed change.*
 
 ---
 
-## The model
+## The idea
 
-Five primitives describe everything in the system.
+A job title says what someone is **called**. Access shows what they can **affect**.
+The Foundry models a company not as a tree of titles, but as **objects in motion**,
+each carrying an **owner, a state, and a lifecycle** — and it makes the access
+behind that motion explicit.
 
-| Primitive | What it is | Examples |
+**The spine** every change travels:
+
+```
+Inputs → Triage → Five Boxes → Impact → Approval → Commit
+```
+
+- **Inputs** — email, PDF, Excel, chat, form, API. *Documents are inputs, not the truth.*
+- **Triage** — what is it, what does it affect, how sure are we? (confidence)
+- **Five Boxes** — every change is sorted into one governed action family.
+- **Impact** — bottlenecks, aging, downstream effects.
+- **Approval** — routed by confidence, risk, and ownership.
+- **Commit** — written to the system of record + an audit trail.
+
+## The Five Boxes
+
+The Foundry sorts incoming reality into a small number of governed action families.
+A box is not a folder — it is a *governed route*.
+
+| Box | Meaning | Examples |
 |---|---|---|
-| **Actor** | Who is acting | person, team, system, agent |
-| **Object** | What is acted on | product, field, schema, workflow, view, file |
-| **Permission** | What the actor can do | view, edit, approve, export, delete, override |
-| **Responsibility** | What the actor is accountable for | owns, maintains, reviews, validates, approves |
-| **Evidence** | What actually happened | logs, changes, approvals, exceptions, comments |
+| ➕ **Create** | Bring a new thing into the system | new item, new record, new request |
+| ✏️ **Modify** | Change something that already exists | price update, lead time, attribute change |
+| 📅 **Plan** | Prepare future work without touching live reality | roadmap, draft launch, future project |
+| 🛡️ **Control** | Approve, reject, route, or govern a change | approval, escalation, exception, release |
+| 📄 **Reference** | Store evidence or context without changing the system | spec sheet, certificate, email, attachment |
 
-Permission and Responsibility are recorded **separately** — see
-[`schema/definition_of_definition.json`](schema/definition_of_definition.json),
-where `who_has_access` and `who_responsible` are two distinct questions. Because
-they are separate, they can disagree. Evidence (the `shadow.jsonl` audit trail)
-is what lets us check whether the claims hold up.
+## Org chart, shown through access
 
-## What the system exposes
+The same company seen through *access* instead of titles. A role's level is not a
+title — it is **which governed box it can act in.**
 
-The point of separating access from responsibility is to surface the gaps that
-title-first systems hide. The Spring is designed to flag:
+| Level | Role | Dominant box | Responsibility |
+|---|---|---|---|
+| 5 | CEO / Executive | Future Horizon | sets strategic direction |
+| 4 | Director | Plan | coordinates priorities |
+| 3 | Manager | Control | approves, escalates, handles exceptions |
+| 2 | Specialist / Owner | Modify | maintains and improves existing reality |
+| 1 | Data Entry / Ops | Create | adds new records and requests |
 
-- **Access without responsibility** — someone can change it, but no one owns it.
-- **Responsibility without access** — someone is accountable but cannot act.
-- **Approval without evidence** — a sign-off with no record behind it.
-- **Ownership without visibility** — an owner who cannot see the object's state.
-- **Editable fields without a declared owner** — change is possible, ownership is blank.
-- **High-risk fields without review rules** — `impact_if_wrong` is high, review cycle is `never`.
+*Primary ownership is not exclusive permission. Most roles touch adjacent boxes.
+Reference cuts across every level.*
 
-See [`docs/access_model.md`](docs/access_model.md) for the full definition of
-each mismatch and the schema fields it reads.
+## What it exposes
 
----
+Because access and responsibility are recorded **separately**, they can disagree —
+and the Foundry surfaces the gap instead of papering over it:
 
-## Why this is a product-data tool, not a theory
+- **Approval without authority** — a change routed to someone not authorised to control it.
+- **Ownership without flow** — an owner is accountable, but the object is blocked.
+- **Editable without an approver** — a change that can touch truth with nobody to sign off.
+- **Low-confidence truth** — something committed as truth that triage was unsure about.
 
-The business value is concrete. When a price, a tolerance, or a safety grade is
-wrong, the first question is always *"who was supposed to be keeping this right?"*
-Title-first systems answer with a department. Access maps answer with a name, a
-permission, and a responsibility claim you can check against the evidence.
-
-The same source data drives four maps drawn for four travellers — customer,
-sales, engineer, management — each showing only what that traveller needs to act.
-The maps differ; the source of truth does not.
+These are detected for real by the pipeline, not just described — see
+[`runtime/foundry.py`](runtime/foundry.py) and [`docs/access_model.md`](docs/access_model.md).
 
 ---
 
 ## Repo layout
 
 ```
-/schema           source schema + four view schemas + the meta-schema (definition of definition)
-/data             the product dataset (industrial fasteners)
-/runtime          orchestrator (puhemies), validator, transforms, janitor, judge, shadow
-/gui              four-panel Tkinter overview, each panel expandable to full detail
-/artifacts        run outputs — view exports, validation reports, shadow logs
-streamlit_app.py  web frontend — a thin shell over the same runtime
-main.py           desktop frontend (Tkinter)
+/schema
+    object_schema.json   — the governed object (world, box, owner, state, commitment, lifecycle)
+    boxes.json           — the five governed action families
+    roles.json           — org-chart-through-access: role gravity over the boxes
+    definition_of_definition.json — the meta-schema (the five definition questions)
+/data
+    objects.json         — sample in-flight objects across customer / item / supplier streams
+/runtime
+    foundry.py           — the pipeline: triage, impact, approval, access checks, lenses
+    schema_validator.py  — typed-box validation
+    shadow.py            — the invisible eye (audit trail)
+    artifact_store.py    — run artifacts + JSONL shadow log
+/artifacts               — run outputs (gitignored)
+streamlit_app.py         — the web frontend
 ```
 
-The runtime is pure Python standard library. The frontends are thin shells over
-it — swapping a UI requires zero runtime changes.
+The runtime is pure Python standard library. The Streamlit frontend is a thin
+shell over it — *the user does not need to see the Foundry; the Foundry makes the
+process trustworthy.*
 
 ## Running it
 
-Install dependencies (only needed for the web frontend; the runtime itself needs none):
-
 ```bash
 pip install -r requirements.txt
-```
-
-**Web app (recommended):**
-
-```bash
 streamlit run streamlit_app.py
 ```
 
-Press **▶ Run pipeline** in the sidebar. The pipeline is fully self-contained —
-schema-driven transforms and a rule-based judge — so it needs no Ollama or cloud
-LLM to produce the four maps.
-
-**Desktop app (Tkinter):**
-
-```bash
-python main.py
-```
+Press **🔥 Run the Foundry** in the sidebar. The pipeline is self-contained — no
+Ollama or cloud LLM is needed.
 
 ## Deploying the demo (Streamlit Community Cloud)
 
-1. Push this repo to GitHub (public).
-2. At [share.streamlit.io](https://share.streamlit.io), create an app pointing at
-   this repo, branch `master`, main file `streamlit_app.py`.
-3. `requirements.txt` is picked up automatically; no secrets are required.
-
-The app writes run artifacts to `artifacts/` (gitignored, ephemeral on the cloud
-host) — nothing persistent or sensitive leaves the box.
+1. Push to GitHub (public).
+2. At [share.streamlit.io](https://share.streamlit.io), point an app at this repo,
+   branch `master`, main file `streamlit_app.py`.
+3. `requirements.txt` is picked up automatically; no secrets required.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Use it, fork it, build on it; just keep the
-copyright notice.
+MIT — see [LICENSE](LICENSE).
 
 ---
 
-*Data is not reality. But it is all we have.*
-*Every schema is a map. Maps are drawn for travellers — they all need a different map.*
-*Define it in the schema or it does not exist.*
+*Documents are inputs, not the truth. The truth is the structured record.*
+*Every important object has an owner, a state, and a lifecycle.*
+*Fast enough for the business. Structured enough for shared truth.*
