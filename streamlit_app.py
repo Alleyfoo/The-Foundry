@@ -102,14 +102,61 @@ spine_badges[5] = ui.badge(f"{len(result['committed'])} committed", ui.GREEN, "#
 ui.spine(spine_badges)
 st.caption("Users see tools. The system sees governed change.")
 
-tabs = st.tabs([
-    "Intake", "Actions", "The Story", "The Five Boxes", "Governance Map",
+(tab_scenario, tab_intake, tab_actions, tab_story, tab_boxes, tab_map,
+ tab_bottlenecks, tab_impact, tab_mismatch, tab_lenses, tab_audit) = st.tabs([
+    "▶ Scenario", "Intake", "Actions", "The Story", "The Five Boxes", "Governance Map",
     "Bottlenecks & Aging", "Impact & Approvals", "Access Mismatches",
     "Monitoring Lenses", "Audit Trail",
 ])
 
+# --- Scenario (guided narrative walkthrough) ---
+with tab_scenario:
+    ui.section_header(
+        "Meridian Industrial onboards a new product",
+        "Watch one real change travel the spine — from a customer email to trusted SAP truth.")
+    st.markdown(
+        "**The story.** Nordic Health Oy signals they'd pay for a *waterproof carrying "
+        "handle*. Sales raises a request to create the new variant in SAP. But the item "
+        "is missing its weight and HS code, and the pricing approval has been **stuck for "
+        "7 days**. Here is the change, and the Foundry governing it to trusted truth."
+    )
+    chain_ids = ["OBJ-I001", "OBJ-I002", "OBJ-I003", "OBJ-I004", "OBJ-I005"]
+    item_chain = [obj_by_id[i] for i in chain_ids if i in obj_by_id]
+    ui.stream_flow("item", "The change: new variant → SAP", item_chain)
+
+    sap_master = obj_by_id.get("OBJ-I005", {})
+    if sap_master.get("commitment") == "truth":
+        st.success(f"✅ The new variant is now **trusted truth** in SAP "
+                   f"(`{sap_master.get('system_of_record_ref')}`). The bottleneck is cleared.")
+    else:
+        st.markdown(
+            "**What the Foundry caught on this chain:**\n"
+            "- 🔴 **Bottleneck** — `OBJ-I004` pricing approval, blocked 7 days.\n"
+            "- 🛡️ **Access mismatch** — `OBJ-I003` validation check is routed to *Product "
+            "Data*, who isn't authorised to act in Control.")
+        SCENARIO = [
+            ("OBJ-I004", "unblock", "Manager", "Manager clears the stuck pricing approval"),
+            ("OBJ-I005", "activate", "SAP Owner", "SAP Owner opens the item record"),
+            ("OBJ-I005", "submit", "SAP Owner", "Submitted for approval"),
+            ("OBJ-I005", "approve", "Manager", "Manager approves — authorised for Control"),
+            ("OBJ-I005", "commit", "SAP Owner", "Committed to trusted truth in SAP"),
+        ]
+        if st.button("▶  Play the resolution", type="primary"):
+            log = []
+            for oid, act, actor, note in SCENARIO:
+                r = apply_action(sor, oid, act, actor, access)
+                log.append(f"{'✅' if r['ok'] else '⚠️'} {note} — {r['message']}")
+            refresh(sor)
+            st.session_state["scenario_log"] = log
+            st.rerun()
+    if st.session_state.get("scenario_log"):
+        st.markdown("**Resolution:**")
+        for line in st.session_state["scenario_log"]:
+            st.markdown(f"- {line}")
+        st.caption("Use **Reset to seed** in the sidebar to replay.")
+
 # --- Intake (drop in chaos) ---
-with tabs[0]:
+with tab_intake:
     ui.section_header("Intake — drop in chaos, watch it get sorted")
     st.caption("Triage reads the input, sorts it into one of the five boxes, and gives it a confidence.")
     raw = st.text_area("Raw input", placeholder="e.g. Customer Acme wants a waterproof handle variant")
@@ -125,7 +172,7 @@ with tabs[0]:
                    f"stream `{obj['stream']}`, confidence {obj['confidence']}, state `draft`.")
 
 # --- Actions (drive the spine) ---
-with tabs[1]:
+with tab_actions:
     ui.section_header("Drive an object through the spine")
     st.caption("Approve / reject are Control actions — only a control-authorised role may do them.")
     actor = st.selectbox("Acting as role", [r["role"] for r in roles["roles"]], index=2)
@@ -157,7 +204,7 @@ with tabs[1]:
                     st.rerun()
 
 # --- The Story (org chart through access) ---
-with tabs[2]:
+with tab_story:
     ui.section_header(
         "Roles and Ownership",
         "An org chart shows titles. The Foundry shows access — different roles have "
@@ -174,7 +221,7 @@ with tabs[2]:
         st.markdown(f"- {p}")
 
 # --- The Five Boxes ---
-with tabs[3]:
+with tab_boxes:
     ui.section_header(
         "The Five Boxes",
         "The Foundry sorts incoming reality into a small number of governed action families.")
@@ -184,7 +231,7 @@ with tabs[3]:
     st.dataframe(to_df(result["triage"]), width="stretch", height=300)
 
 # --- Governance Map (streams) ---
-with tabs[4]:
+with tab_map:
     ui.section_header("Object Governance Map",
                       "Who owns reality, what is flowing, and where it gets stuck.")
     labels = {"customer": "1. Customer Stream", "item": "2. Item Stream",
@@ -203,7 +250,7 @@ with tabs[4]:
         )
 
 # --- Bottlenecks & Aging ---
-with tabs[5]:
+with tab_bottlenecks:
     ui.section_header("Bottlenecks & Aging",
                       "Better visibility of where work is stuck and aging — an owner is "
                       "accountable, but it cannot move.")
@@ -214,7 +261,7 @@ with tabs[5]:
         ui.bottleneck_cards(bn)
 
 # --- Impact & Approvals ---
-with tabs[6]:
+with tab_impact:
     ui.section_header("Impact & approval routing")
     st.caption("Route by confidence, risk, and ownership. Urgency changes priority, not truthfulness.")
     st.markdown("**Pending approvals**")
@@ -237,7 +284,7 @@ with tabs[6]:
     )
 
 # --- Access Mismatches ---
-with tabs[7]:
+with tab_mismatch:
     ui.section_header("Where access and responsibility disagree, the Foundry exposes it")
     st.caption("Access is a claim about responsibility. The system does not paper over the gap.")
     ms = result["mismatches"]
@@ -258,7 +305,7 @@ with tabs[7]:
             )
 
 # --- Monitoring Lenses ---
-with tabs[8]:
+with tab_lenses:
     ui.section_header("Same objects, different maps")
     st.caption("Customer · Sales · Product · Operations · Finance — each lens shows what that function owns.")
     lens_tabs = st.tabs([l.title() for l in result["lenses"]])
@@ -271,7 +318,7 @@ with tabs[8]:
                 st.info("No objects in this lens.")
 
 # --- Audit Trail ---
-with tabs[9]:
+with tab_audit:
     ui.section_header("The invisible eye — every step, logged")
     st.caption("Trusted outcomes: traceable, compliant, auditable.")
     st.markdown("**System-of-record events** (intake, actions, commits):")
