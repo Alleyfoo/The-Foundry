@@ -27,22 +27,19 @@ item, or commit something to truth. Closing that gap is the bulk of the work bel
 
 Ordered by how much each makes the demo *true*, not just prettier.
 
-### P1 — Make the spine actually run  (highest value)
+### P1 — Make the spine actually run  ✅ DONE (commits f3082e0, 5516bf9)
 
-- [ ] **1. Intake + triage.** Accept a raw input (text/form, e.g. "Customer X wants
-      feature Y") and classify it into a box with a confidence score, creating a new
-      object. The deck's opening move and the most compelling demo: drop chaos in,
-      watch it get sorted.
-- [ ] **2. Actions + state machine.** Objects transition
-      `draft → active → pending → blocked → retired`. Approve / reject moves an
-      object forward — the human-in-the-loop the deck calls first-class.
-- [ ] **3. Commit to a system of record.** An approved object flips
-      `commitment → truth`, gets a `system_of_record_ref`, and is written to a
-      **persistent local store (SQLite = the "SAP" stand-in)**. Today commitment is
-      just a label in seed data.
-
-> Note: items 2 and 3 need persistence, so SQLite lands with them. `objects.json`
-> becomes the seed; runtime state persists between runs.
+- [x] **1. Intake + triage.** `runtime/actions.py::triage_text/intake` — keyword
+      rules sort a raw input into a box with a confidence; the Intake tab shows a
+      live preview and forges a draft object.
+- [x] **2. Actions + state machine.** `runtime/actions.py` — `draft → active →
+      pending → active → (commit) truth`, plus block / unblock / retire. Approve and
+      reject are Control actions, guarded by the access model (unauthorised role
+      refused). The Actions tab drives it.
+- [x] **3. Commit to a system of record.** `runtime/system_of_record.py` — SQLite
+      stand-in for SAP, seeded from `objects.json`, persists between runs
+      (`artifacts/foundry.db`). Commit flips `commitment → truth` and mints a
+      `system_of_record_ref`; every transition is in the event log.
 
 ### P2 — Make it analytically real
 
@@ -66,6 +63,9 @@ governance map something *live* to draw, then P2, then P3.
 ---
 
 ## Visual plan
+
+> Handed to a dedicated design pass (Claude designer) later. The functional UI is in
+> place; this is the reskin brief.
 
 Make it look like the deck. The current UI is functional but plain (tables + emoji).
 
