@@ -1,14 +1,12 @@
 """
-The Spring — Streamlit web frontend.
+The Foundry — Streamlit web frontend.
 
-A thin shell over the existing runtime. It changes NO runtime code: it calls the
-same Puhemies orchestrator the Tkinter GUI calls, and re-renders the four maps
-(source, views, validation/judge, shadow) for the web.
+Turning incoming business chaos into trusted, structured change.
+
+A thin shell over runtime/foundry.py. Users see simple views; the system sees
+governed change. Run with:
 
     streamlit run streamlit_app.py
-
-The pipeline is fully self-contained (standard-library runtime, rule-based judge,
-schema-driven transforms). No Ollama or cloud LLM is needed to run it.
 """
 
 from __future__ import annotations
@@ -19,219 +17,195 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from runtime.puhemies import Puhemies
+from runtime.foundry import Foundry
 
 BASE_DIR = Path(__file__).resolve().parent
 
-VIEW_NAMES = ["customer", "sales", "engineer", "management"]
-VIEW_BLURB = {
-    "customer": "Plain-language specs. No internal codes, no pricing. The map a buyer travels.",
-    "sales": "Inventory, lead times, pricing tiers, margin. The map a deal travels.",
-    "engineer": "Full precision, standards, tolerances, version history. The map a design travels.",
-    "management": "Aggregates, coverage gaps, exception flags. The map a decision travels.",
-}
+BOX_ICON = {"create": "➕", "modify": "✏️", "plan": "📅", "control": "🛡️", "reference": "📄"}
+STATE_ICON = {"active": "🟢", "pending": "🟡", "blocked": "🔴", "draft": "⚪", "retired": "⚫"}
+COMMIT_ICON = {"proposal": "💡", "workflow": "⚙️", "truth": "🔒"}
 
 
 # ----------------------------------------------------------------------
-# Pipeline execution (cached per session)
-# ----------------------------------------------------------------------
-def run_pipeline() -> dict:
-    """Run the full Puhemies pipeline and capture handles for rendering."""
-    orchestrator = Puhemies(base_dir=str(BASE_DIR))
-    ctx = orchestrator.run_pipeline()
-    return {
-        "run_id": ctx.run_id,
-        "status": ctx.status,
-        "error": ctx.error,
-        "store": orchestrator.store,
-        "shadow": orchestrator.shadow,
-        "drift_score": orchestrator.shadow.drift_score,
-        "metrics": orchestrator.shadow.summary(),
-    }
+def run_foundry() -> dict:
+    return Foundry(base_dir=str(BASE_DIR)).run()
 
 
-def read_artifact(store, run_id: str, key: str):
-    """Read a JSON artifact, returning None instead of raising if absent."""
-    try:
-        return store.read_json(run_id, key)
-    except Exception:
-        return None
-
-
-def to_df(records) -> pd.DataFrame:
-    """Build a display DataFrame that is safe for Streamlit's Arrow conversion.
-
-    Arrow rejects a column that mixes scalars and lists/dicts (e.g. a schema
-    `type` that is sometimes "string" and sometimes ["string", "null"], or a
-    product field holding a list of approved uses). Stringify any nested cell so
-    every column is a flat, Arrow-friendly type.
-    """
+def to_df(records, columns=None) -> pd.DataFrame:
+    """Arrow-safe DataFrame: stringify any nested cell (lists/dicts)."""
     df = pd.DataFrame(records)
+    if columns:
+        df = df[[c for c in columns if c in df.columns]]
     for col in df.columns:
         if df[col].map(lambda v: isinstance(v, (list, dict))).any():
             df[col] = df[col].map(
-                lambda v: json.dumps(v, default=str) if isinstance(v, (list, dict)) else v
+                lambda v: ", ".join(map(str, v)) if isinstance(v, list)
+                else json.dumps(v, default=str) if isinstance(v, dict) else v
             )
     return df
 
 
-# ----------------------------------------------------------------------
-# Page setup
-# ----------------------------------------------------------------------
-st.set_page_config(
-    page_title="The Spring — Access-First Product Data",
-    page_icon="🪤",
-    layout="wide",
-)
+OBJ_COLS = ["object_id", "object_type", "title", "box", "stream",
+            "owner_team", "state", "commitment", "confidence", "aging_days"]
 
-st.title("The Spring")
+
+# ----------------------------------------------------------------------
+st.set_page_config(page_title="The Foundry", page_icon="🔥", layout="wide")
+
+st.title("🔥 The Foundry")
 st.markdown(
-    "**An access-first model for product data responsibility.** "
-    "Org charts show hierarchy. Access maps show how work actually happens."
+    "**Turning incoming business chaos into trusted, structured change.** "
+    "Org charts show hierarchy. The Foundry shows the organisation through *access* — "
+    "who can act on what, as objects flow from chaos toward trusted truth."
 )
 
-# Sidebar — run control + the thesis
 with st.sidebar:
-    st.header("Pipeline")
-    st.caption(
-        "One source of truth → four maps, each drawn for a different traveller. "
-        "The data does not change. The maps do."
-    )
-    if st.button("▶  Run pipeline", type="primary", use_container_width=True):
-        with st.spinner("Running schema → validate → transform → judge …"):
-            st.session_state["result"] = run_pipeline()
-
+    st.header("The Foundry")
+    st.caption("Documents are inputs, not the truth. The truth is the structured record.")
+    if st.button("🔥  Run the Foundry", type="primary", width="stretch"):
+        with st.spinner("Intake → triage → impact → approval → commit …"):
+            st.session_state["result"] = run_foundry()
     st.divider()
     st.markdown(
-        "- A title says what someone is **called**.\n"
-        "- Access shows what they can **affect**.\n"
-        "- Responsibility should be **explicit** wherever access exists.\n\n"
-        "Access is a *claim* about responsibility. When the two disagree, the "
-        "system should expose the mismatch — it should not paper over it."
+        "**The spine**\n\n"
+        "Inputs → Triage → Five Boxes → Impact → Approval → Commit\n\n"
+        "_Users see tools. The system sees governed change._"
     )
 
 result = st.session_state.get("result")
-
 if result is None:
-    st.info("Press **▶ Run pipeline** in the sidebar to generate the four maps from the source data.")
+    st.info("Press **🔥 Run the Foundry** in the sidebar to forge the object set into governed change.")
     st.stop()
 
-# ----------------------------------------------------------------------
-# Run status banner
-# ----------------------------------------------------------------------
-store = result["store"]
-run_id = result["run_id"]
+objects = result["objects"]
+obj_by_id = {o["object_id"]: o for o in objects}
 
-if result["status"] == "completed":
-    st.success(f"Pipeline completed · run `{run_id}`")
-elif result["status"] == "failed":
-    st.error(f"Pipeline failed · {result['error']}")
-else:
-    st.warning(f"Pipeline status: {result['status']}")
+# Top metrics
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("Objects in flight", len(result["in_flight"]))
+c2.metric("Committed truth 🔒", len(result["committed"]))
+c3.metric("Bottlenecks 🔴", len(result["bottlenecks"]))
+c4.metric("Access mismatches", len(result["mismatches"]),
+          delta=None if not result["mismatches"] else "exposed", delta_color="inverse")
+c5.metric("Needs a human", sum(1 for t in result["triage"] if t["needs_human"]))
 
-m = result["metrics"]
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Drift score", f"{result['drift_score']:.4f}")
-c2.metric("Events logged", m.get("total_events", 0))
-c3.metric("Errors", m.get("error_count", 0))
-c4.metric("Revisions", m.get("revision_count", 0))
+tabs = st.tabs([
+    "The Story", "The Five Boxes", "Governance Map",
+    "Bottlenecks & Aging", "Access Mismatches", "Monitoring Lenses", "Audit Trail",
+])
 
-# ----------------------------------------------------------------------
-# Tabs — the four maps + the model
-# ----------------------------------------------------------------------
-tab_views, tab_source, tab_valid, tab_shadow, tab_model = st.tabs(
-    ["Four Views", "Source & Schema", "Validation & Judge", "Shadow Log", "Access Model"]
-)
+# --- The Story (org chart through access) ---
+with tabs[0]:
+    st.subheader("An org chart shows titles. The Foundry shows access.")
+    st.markdown(
+        "Different roles have different *gravity* across the five boxes. The level "
+        "isn't a title — it's **which governed box you can act in.**"
+    )
+    roles = result["roles"]
+    role_rows = [
+        {"Level": r["level"], "Role": r["role"],
+         "Dominant box": r["dominant_box"], "Responsibility": r["responsibility"]}
+        for r in sorted(roles["roles"], key=lambda r: -r["level"])
+    ]
+    st.table(pd.DataFrame(role_rows))
+    st.markdown("**Who can act in each box** (access ≠ title):")
+    access = roles["access_model"]["box_access"]
+    acc_rows = [
+        {"Box": f"{BOX_ICON.get(b,'')} {b}", "Primary owner": v["primary"],
+         "Also touches": ", ".join(v["also"]) or "—"}
+        for b, v in access.items()
+    ]
+    st.table(pd.DataFrame(acc_rows))
+    for p in roles["principles"]:
+        st.markdown(f"- {p}")
 
-# --- Four Views ---
-with tab_views:
-    st.subheader("One source, four maps")
-    view_tabs = st.tabs([v.title() for v in VIEW_NAMES])
-    for view_name, vt in zip(VIEW_NAMES, view_tabs):
-        with vt:
-            st.caption(VIEW_BLURB[view_name])
-            data = read_artifact(store, run_id, f"view_{view_name}.json")
-            report = read_artifact(store, run_id, f"validation_{view_name}.json")
-            if report:
-                ok = report.get("is_valid", False)
+# --- The Five Boxes ---
+with tabs[1]:
+    st.subheader("The Foundry sorts incoming reality into five governed action families")
+    st.caption(result["boxes"]["tagline"])
+    cols = st.columns(5)
+    for col, box in zip(cols, result["boxes"]["boxes"]):
+        in_box = [o for o in objects if o["box"] == box["id"]]
+        with col:
+            st.markdown(f"### {BOX_ICON.get(box['id'],'')} {box['name']}")
+            st.caption(box["meaning"])
+            st.metric("objects", len(in_box))
+            for o in in_box:
                 st.markdown(
-                    f"{'✅' if ok else '❌'} "
-                    f"{report.get('valid_records', 0)}/{report.get('total_records', 0)} "
-                    f"records valid · {report.get('violation_count', 0)} violations"
+                    f"{STATE_ICON.get(o['state'],'')} **{o['object_id']}** "
+                    f"{COMMIT_ICON.get(o['commitment'],'')}<br>"
+                    f"<span style='font-size:0.8em'>{o['title']}</span>",
+                    unsafe_allow_html=True,
                 )
-            if data:
-                st.dataframe(to_df(data), use_container_width=True, height=420)
+    st.divider()
+    st.markdown("**Triage** — how sure the Foundry is about each object:")
+    st.dataframe(to_df(result["triage"]), width="stretch", height=300)
+
+# --- Governance Map (streams) ---
+with tabs[2]:
+    st.subheader("Who owns reality, what is flowing, and where it gets stuck")
+    for stream in ["customer", "item", "supplier"]:
+        in_stream = [o for o in objects if o["stream"] == stream]
+        st.markdown(f"#### {stream.title()} stream  ·  {len(in_stream)} objects")
+        st.dataframe(to_df(in_stream, OBJ_COLS), width="stretch",
+                     height=min(40 + 35 * len(in_stream), 340))
+
+# --- Bottlenecks & Aging ---
+with tabs[3]:
+    st.subheader("Better visibility of bottlenecks and aging work")
+    bn = result["bottlenecks"]
+    if not bn:
+        st.success("No bottlenecks. Everything is flowing.")
+    else:
+        st.markdown(f"**{len(bn)}** objects are stuck or aging:")
+        for b in bn:
+            colour = "🔴" if b["reason"] == "blocked" else "🟡"
+            st.markdown(
+                f"{colour} **{b['object_id']}** — {b['title']}  \n"
+                f"owner **{b['owner_team']}** · state `{b['state']}` · "
+                f"aging **{b['aging_days']}d** · downstream impact: {b['downstream_count']}"
+            )
+
+# --- Access Mismatches (the payoff) ---
+with tabs[4]:
+    st.subheader("Where access and responsibility disagree, the Foundry exposes it")
+    st.caption("Access is a claim about responsibility. The system does not paper over the gap.")
+    ms = result["mismatches"]
+    if not ms:
+        st.success("No access mismatches detected.")
+    else:
+        label = {
+            "approval_without_authority": "🛡️ Approval without authority",
+            "ownership_without_flow": "🔴 Ownership without flow (blocked)",
+            "editable_without_approver": "✏️ Editable without a declared approver",
+            "low_confidence_truth": "🔒 Committed as truth at low confidence",
+        }
+        for m in ms:
+            o = obj_by_id.get(m["object_id"], {})
+            st.markdown(
+                f"**{label.get(m['type'], m['type'])}** — `{m['object_id']}` "
+                f"({o.get('title','')})  \n{m['detail']}"
+            )
+
+# --- Monitoring Lenses ---
+with tabs[5]:
+    st.subheader("Same objects, different maps")
+    st.caption("Customer · Sales · Product · Operations · Finance — each lens shows what that function owns.")
+    lens_tabs = st.tabs([l.title() for l in result["lenses"]])
+    for lt, (lens, ids) in zip(lens_tabs, result["lenses"].items()):
+        with lt:
+            rows = [obj_by_id[i] for i in ids if i in obj_by_id]
+            if rows:
+                st.dataframe(to_df(rows, OBJ_COLS), width="stretch", height=320)
             else:
-                st.info("No data for this view.")
+                st.info("No objects in this lens.")
 
-# --- Source & Schema ---
-with tab_source:
-    st.subheader("Source of truth")
-    products_path = BASE_DIR / "data" / "products.json"
-    if products_path.exists():
-        raw = json.loads(products_path.read_text(encoding="utf-8"))
-        products = raw.get("products", raw) if isinstance(raw, dict) else raw
-        st.caption(f"{len(products)} products · the single source the maps are drawn from")
-        st.dataframe(to_df(products), use_container_width=True, height=360)
-
-    matrix = read_artifact(store, run_id, "field_matrix.json")
-    if matrix:
-        st.subheader("Field coverage matrix")
-        st.caption("Which source field appears in which view — what each traveller is allowed to see.")
-        st.dataframe(to_df(matrix), use_container_width=True, height=360)
-
-    schema_path = BASE_DIR / "schema" / "source_schema.json"
-    if schema_path.exists():
-        with st.expander("Source schema (JSON)"):
-            st.json(json.loads(schema_path.read_text(encoding="utf-8")))
-
-# --- Validation & Judge ---
-with tab_valid:
-    st.subheader("Validation")
-    rows = []
-    for key in store.list_artifacts(run_id):
-        if key.startswith("validation_"):
-            r = read_artifact(store, run_id, key)
-            if r:
-                rows.append({
-                    "target": key.replace("validation_", "").replace(".json", ""),
-                    "total": r.get("total_records", 0),
-                    "valid": r.get("valid_records", 0),
-                    "violations": r.get("violation_count", 0),
-                    "is_valid": r.get("is_valid", False),
-                })
-    if rows:
-        st.dataframe(to_df(rows), use_container_width=True)
-
-    st.subheader("Judge decisions")
-    jrows = []
-    for key in store.list_artifacts(run_id):
-        if key.startswith("judge_"):
-            d = read_artifact(store, run_id, key)
-            if d:
-                jrows.append({
-                    "target": key.replace("judge_", "").replace(".json", ""),
-                    "verdict": d.get("verdict", "?"),
-                    "confidence": d.get("confidence", 0),
-                    "gate_violations": "; ".join(d.get("gate_violations", [])),
-                    "suggestions": "; ".join(d.get("suggestions", [])),
-                })
-    if jrows:
-        st.dataframe(to_df(jrows), use_container_width=True)
-
-    coverage = read_artifact(store, run_id, "view_coverage.json")
-    if coverage:
-        with st.expander("View coverage detail"):
-            st.json(coverage)
-
-# --- Shadow Log ---
-with tab_shadow:
-    st.subheader("The invisible eye")
-    st.caption("Every event, logged. No opinions, no intervention — the evidence layer.")
-    entries = read_artifact(store, run_id, "shadow_summary.json")
-    if entries:
-        st.json(entries)
-    log = store.read_shadow(run_id) if hasattr(store, "read_shadow") else []
+# --- Audit Trail ---
+with tabs[6]:
+    st.subheader("The invisible eye — every step, logged")
+    st.caption("Trusted outcomes: traceable, compliant, auditable. No opinions, no intervention.")
+    st.json(result["metrics"])
+    log = result["store"].read_shadow(result["run_id"])
     if log:
         df = pd.DataFrame([
             {
@@ -242,24 +216,4 @@ with tab_shadow:
             }
             for e in log
         ])
-        st.dataframe(df, use_container_width=True, height=420)
-
-# --- Access Model ---
-with tab_model:
-    st.subheader("Access maps, not org charts")
-    st.markdown(
-        "Most systems describe people through job titles. Day-to-day data work "
-        "happens through **access**: who can see a field, who can change it, who "
-        "approves it, who maintains it, and who is accountable when it is wrong.\n\n"
-        "The Spring records **permission** and **responsibility** separately, so "
-        "they can be compared. The mismatches it is built to expose:"
-    )
-    st.table(pd.DataFrame([
-        {"Mismatch": "Access without responsibility", "Meaning": "Someone can change it, but no one owns it."},
-        {"Mismatch": "Responsibility without access", "Meaning": "Someone is accountable but cannot act."},
-        {"Mismatch": "Approval without evidence", "Meaning": "A sign-off with no record behind it."},
-        {"Mismatch": "Ownership without visibility", "Meaning": "An owner who cannot see the object's state."},
-        {"Mismatch": "Editable field without owner", "Meaning": "Change is possible; ownership is blank."},
-        {"Mismatch": "High-risk field without review", "Meaning": "Can cause harm; nothing schedules a look."},
-    ]))
-    st.caption("Full definitions in docs/access_model.md.")
+        st.dataframe(df, width="stretch", height=380)
