@@ -96,7 +96,10 @@ These are detected for real by the pipeline, not just described — see
     artifact_store.py    — run artifacts + JSONL shadow log
 /artifacts               — run outputs (gitignored)
 streamlit_app.py         — the web frontend
+PLAN.md                  — roadmap: what is left to build, and the visual plan
 ```
+
+See [PLAN.md](PLAN.md) for the programside roadmap and the visual design plan.
 
 The runtime is pure Python standard library. The Streamlit frontend is a thin
 shell over it — *the user does not need to see the Foundry; the Foundry makes the
