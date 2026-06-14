@@ -1,22 +1,34 @@
-# CLAUDE.md — Product Schema Map System
+# CLAUDE.md — The Foundry
 ## Session contract for Claude Code / Opus
 
 ---
 
 ## What we are building
 
-A schema-driven product data system with a single source of truth and four distinct
-frontend views — customer, sales, engineer, management. Each view is a map drawn for
-a specific traveller making specific decisions. The source data does not change. The
-maps do.
+**The Foundry** turns incoming business chaos into trusted, structured change.
+Most systems describe a company through job titles. The Foundry describes it
+through **access** — which governed action a role can take — and treats every
+important object as something with an **owner, a state, and a lifecycle**.
 
-The system is built on the principle that **definitions are the hard problem, not the
-code**. The schema is the governance mechanism. Agents are plumbers — they connect
-pipes according to the schema. The schema tells them what to do. Update the schema,
-the system adapts.
+> Org charts show hierarchy. The Foundry shows how work actually happens.
+> Users see tools. The system sees governed change.
 
-Core philosophy: data is not reality, but it is all we have. Every schema is a map,
-not the territory. Maps are drawn for use cases, not for completeness.
+It is a Streamlit app over a pure-Python runtime. The runtime does the governance;
+the UI is a thin shell. Swapping the UI should require zero runtime changes.
+
+(Originally "The-spring", a fastener product-schema system. Evolved into The Foundry
+from an 8-slide design deck. The fastener code lives in git history.)
+
+---
+
+## Core philosophy
+
+- Documents are inputs, not the truth. The truth is the structured record.
+- Every important object has an owner, a state, and a lifecycle.
+- Urgency changes priority, not truthfulness.
+- Access is a claim about responsibility. Where they disagree, expose the mismatch.
+- Simple boxes. Clear routing. Lower chaos.
+- Fast enough for the business. Structured enough for shared truth.
 
 ---
 
@@ -24,119 +36,46 @@ not the territory. Maps are drawn for use cases, not for completeness.
 
 - Readable by a kindergartener. Explicit over clever.
 - Security and readability first, performance second.
-- Every decision that touches data must be logged (shadow pattern).
-- Schema validation is not optional — it is the contract.
-- Human-in-the-loop is a first class feature, not an escape hatch.
+- Every decision that touches data is logged (the shadow / invisible eye).
+- Schema validation is the contract, not optional.
 - No hidden state. No silent failures.
 - If it cannot be expressed in a schema, it is not yet defined.
 
 ---
 
-## What to harvest from existing projects
+## The model
 
-### 1. `C:\Users\pertt\Agentic-midi-generator`
-**Take:** The Tkinter GUI architecture.
-- The DAW-style layout — see everything at once, expand any panel for full detail
-- Overview first, details on demand pattern
-- Resizable paned windows
-- Modern Tkinter design approach — proper spacing, fonts, color scheme
-- The single screen that shows all four views at overview level simultaneously
-- Each panel expandable to full detail on click
+### The spine (every change travels this)
+```
+Inputs → Triage → Five Boxes → Impact → Approval → Commit
+```
+- **Inputs** — email, PDF, Excel, chat, form, API.
+- **Triage** — what is it, what does it affect, how sure are we (confidence band).
+- **Five Boxes** — sort into one governed action family.
+- **Impact** — bottlenecks, aging, downstream effects.
+- **Approval** — routed by confidence, risk, and ownership.
+- **Commit** — written to the system of record + audit trail.
 
-**Do not take:** Any MIDI, audio, or music-specific logic.
+### The five boxes (governed action families)
+`create` · `modify` · `plan` · `control` · `reference`
+Defined in `schema/boxes.json`. A box is a governed route, not a folder.
 
----
+### The governed object (`schema/object_schema.json`)
+Every object carries: `world` (outside/internal), `object_type`, `box`, `stream`
+(customer/item/supplier), `owner_team`, `state` (draft/active/pending/blocked/
+retired), `commitment` (proposal/workflow/truth), `confidence`, `aging_days`,
+`approver_role`, `lifecycle`, `evidence`, `downstream`, `system_of_record_ref`.
 
-### 2. `C:\Users\pertt\Data-agents-demo`
-**Take:** The full agent network and communication pattern.
-- `runtime/excel_flow.py` — orchestration pattern, `puhemies_run_from_file`, `puhemies_continue`
-- `runtime/data_janitor.py` — data cleaning and normalization
-- Schema validation and human confirmation flow
-- `shadow.jsonl` audit trail pattern — every event logged, nothing hidden
-- `artifacts/` output structure — `schema_spec.json`, `evidence_packet.json`, `human_confirmation.json`
-- Thin UI shells over a shared runtime core
-- The `agent-base/` canonical agent definitions
+### Access (the org chart through access — `schema/roles.json`)
+Roles have *gravity* — a dominant box — but touch adjacent boxes. `box_access`
+records who can act in each box. Access ≠ title. Primary ownership ≠ exclusive
+permission. Reference cuts across every level.
 
-**Key pattern to preserve:** Agents communicate through structured JSON contracts.
-The orchestrator (puhemies) routes between agents. Human confirmation is requested
-when confidence is low and the decision is recorded permanently.
-
----
-
-### 3. `C:\Users\pertt\agent-learning`
-**Evaluate and take if suitable:**
-- SpeakerAgent orchestrator pattern — receives prompt, selects method circuit, fuses responses
-- Verification/judging loops with revision gating — this is the judge agent pattern
-- Shadow/monitoring layer — JSONL run histories and drift metrics
-- Dataframe pipeline — header/schema inference, transforms, validation, save agents
-- Filesystem allowlist pattern for safe writes
-- Reusable template assets
-
-**The judge/verification loop is particularly relevant** — agents that fail schema
-validation should be given additional context and retried before escalating to human
-confirmation. This is the healing-by-deepening pattern. More context, not restart.
-
----
-
-### 4. `C:\Users\pertt\Support-triage-llm`
-**Evaluate and take if suitable:**
-- Copy `AGENT_GUIDE.md` → `agent.md` in new project root
-- Closed-loop learning pattern — feedback improves future runs
-- SQLite for local persistent state
-- Ollama integration for local LLM inference
-- The headless / local-first architecture — no cloud dependency for core function
-- Read `AGENT_GUIDE.md`, `DESIGN.md`, `docs/overview_en.md` before deciding what to port
-
----
-
-## System architecture
-
-### Source of truth
-One product dataset. Made up but realistic — fasteners/industrial products with:
-- Product code as primary key (stable, short, dumb — just a reference)
-- Full attribute set hanging off the key:
-  - Physical specs (dimensions, material, coating, standard)
-  - Commercial data (pricing tiers, lead times, supplier codes)
-  - Logistics data (inventory, warehouse location, reorder point)
-  - Classification (product family, application, approved uses)
-  - Governance (who defined this, when, version, review date)
-
-### The five definition questions (every attribute must answer these)
-1. **Where does it live** — which system owns it, is this a copy
-2. **What format** — type, length, units, allowed values, null handling
-3. **Who is responsible** — who creates, who can change, who resolves conflicts
-4. **Who has access** — read/write/delete/history per role
-5. **Why does it exist** — what decision does this serve, what breaks if wrong
-
-### Schema layer
-- Source schema — full attribute set, owned by engineer role
-- Customer view schema — filterable specs, plain language, no internal codes, no pricing
-- Sales view schema — inventory, lead times, pricing tiers, margin, customer history
-- Engineer view schema — full precision, standards references, version history, tolerances
-- Management view schema — aggregates, coverage gaps, exception flags, trends
-
-### Agent network
-- **Puhemies (orchestrator)** — receives requests, routes to correct agent circuit,
-  fuses responses, requests human confirmation when confidence is low
-- **Schema validation agent** — validates all input against source schema,
-  dead-letters failures with reason codes
-- **Transform agents** — one per view, converts source schema to view schema
-- **Janitor agent** — cleans and normalizes incoming data
-- **Judge agent** — reviews transform outputs, gates revision if output fails
-  view schema contract, increases context budget for struggling agents before
-  escalating to human
-- **Shadow agent (invisible eye)** — logs everything to JSONL, no opinions,
-  never intervenes, pure observer. Cannot be influenced by other agents.
-- **Learning agent** — tracks confirmed human decisions, updates confidence
-  scores for future similar cases
-
-### Frontend (Tkinter)
-Single window. Four resizable panels — customer, sales, engineer, management.
-Each panel shows overview data at rest. Click any panel to expand to full detail.
-Collapse returns to overview. All four maps visible simultaneously.
-
-The UI is a thin shell. All logic lives in runtime. Swapping UI should require
-zero changes to runtime.
+### Mismatches the pipeline exposes (`runtime/foundry.py`)
+- `approval_without_authority` — control routed to a non-control role
+- `ownership_without_flow` — owned but blocked
+- `editable_without_approver` — can touch truth, no approver
+- `low_confidence_truth` — committed as truth at low confidence
 
 ---
 
@@ -144,97 +83,59 @@ zero changes to runtime.
 
 ```
 /schema
-    source_schema.json          — full product attribute definitions
-    customer_view.json          — customer map definition
-    sales_view.json             — sales map definition  
-    engineer_view.json          — engineer map definition
-    management_view.json        — management map definition
-    definition_of_definition.json — the meta-schema
-
+    object_schema.json            — the governed object (source of truth)
+    boxes.json                    — the five action families
+    roles.json                    — role gravity + box access (the access model)
+    definition_of_definition.json — meta-schema: the five definition questions
 /data
-    products.json               — made up product dataset
-    samples/                    — smaller test sets
-
+    objects.json                  — sample in-flight objects across the three streams
 /runtime
-    orchestrator.py             — puhemies, routing, fusion
-    schema_validator.py         — validation against any schema
-    transform_agents.py         — one transform function per view
-    janitor.py                  — cleaning and normalization
-    judge.py                    — review, revision gating
-    shadow.py                   — invisible eye, JSONL logger
-    learning.py                 — confidence tracking
-
-/frontends
-    tkinter_app.py              — four panel DAW-style main window
-    panels/
-        customer_panel.py
-        sales_panel.py
-        engineer_panel.py
-        management_panel.py
-
-/artifacts
-    (runtime outputs — schema specs, evidence packets, shadow logs)
-
-/tests
-    test_schema_validation.py
-    test_transforms.py
-    test_orchestrator.py
-
-/agent-base
-    (canonical agent definitions, mirrored from Data-agents-demo)
-
+    foundry.py          — the pipeline: triage, impact, approval, access checks, lenses
+    schema_validator.py — typed-box validation (generic, stdlib only)
+    shadow.py           — the invisible eye (JSONL audit trail, drift metrics)
+    artifact_store.py   — run artifacts + shadow log
+    models.py           — dataclasses (RunContext, ShadowEntry, ValidationReport, ...)
+/artifacts              — run outputs (gitignored)
 /docs
-    overview.md
-    schema_guide.md
-
-agent.md                        — copied from Support-triage-llm AGENT_GUIDE.md
-CLAUDE.md                       — this file
-README.md
+    access_model.md     — the access model + the mismatches, in prose
+streamlit_app.py        — the web frontend (thin shell)
+requirements.txt        — streamlit + pandas (runtime is pure stdlib)
 ```
 
 ---
 
-## First session tasks
+## Frontend (Streamlit)
 
-1. Read `agent.md` (copied from Support-triage-llm) and note reusable patterns
-2. Scan the four source repos and identify exact files to port
-3. Create `/schema/definition_of_definition.json` — the meta-schema answering
-   all five definition questions for every field
-4. Create `/data/products.json` — realistic made up fastener/industrial dataset,
-   minimum 20 products, enough variance to test all view transforms
-5. Create `/schema/source_schema.json` from the product dataset
-6. Derive the four view schemas from the source
-7. Port runtime core from Data-agents-demo
-8. Build the judge/healing layer from agent-learning
-9. Build the four Tkinter panels from Agentic-midi-generator DAW pattern
-10. Wire everything together in orchestrator
+`streamlit_app.py`, tabs: The Story (org chart through access), The Five Boxes,
+Governance Map (three streams), Bottlenecks & Aging, Access Mismatches, Monitoring
+Lenses, Audit Trail. Press **Run the Foundry** to run the pipeline.
+
+Run: `streamlit run streamlit_app.py`. Deploy: Streamlit Community Cloud, main file
+`streamlit_app.py`, no secrets.
 
 ---
 
-## Definition of done for first working version
+## Definition of done (current state — all met)
 
-- One product dataset loads from JSON
-- All four view schemas validate against source schema
-- Each view transform produces correct output for all 20 products
-- Shadow log captures every transform event
-- Human confirmation requested for any product failing view schema
-- Tkinter window shows all four panels at overview
-- Any panel expands to full detail on click
-- README explains the map philosophy in plain language
+- Governed objects load and validate against the object schema (21/21 valid).
+- The pipeline triages, finds bottlenecks/aging, routes approvals, and reports commit status.
+- Access mismatches are detected for real and shown in the app + shadow log.
+- Monitoring lenses (customer/sales/product/operations/finance) derive from the same objects.
+- Streamlit app renders every tab (verified via `streamlit.testing.v1.AppTest`).
+- README explains the model in plain language. MIT licensed.
 
 ---
 
 ## Notes
 
-- Local first. No cloud dependency for core function.
-- Ollama for any LLM inference (RTX 4070, 12GB VRAM)
-- SQLite for persistent state if needed
-- Streamlit demo can come later — Tkinter is the primary interface
-- The invisible eye (shadow agent) logs to JSONL always, no exceptions
-- Puhemies is the orchestrator. The name stays.
+- Local first. No cloud dependency for core function. No Ollama needed.
+- The shadow agent logs to JSONL always, no exceptions.
+- Verify UI changes with `AppTest` (it executes the render path; a headless boot does not).
+- Possible next steps: a `/tests` dir; a live "drop a raw input, watch it get
+  sorted into a box" intake demo; decide the fate of `definition_of_definition.json`.
 
 ---
 
-*Data is not reality. But it is all we have.*
-*Every schema is a map. Maps are drawn for travellers, they are drawn for navigators, they are drawn for explorers. They all need a different map*
-*Define it in the schema or it does not exist.*
+*Documents are inputs, not the truth. The truth is the structured record.*
+*Every important object has an owner, a state, and a lifecycle.*
+*Fast enough for the business. Structured enough for shared truth.*

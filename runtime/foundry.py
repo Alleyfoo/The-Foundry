@@ -5,7 +5,7 @@ Takes governed objects (data/objects.json) and runs them through the deck's
 spine: intake -> triage -> impact -> approval routing -> commit. Along the way
 it surfaces bottlenecks, aging, access mismatches, and monitoring lenses.
 
-Reuses The-spring runtime: schema validation, the shadow audit log, and the
+Reuses the runtime core: schema validation, the shadow audit log, and the
 artifact store. The Foundry orchestrates; it never changes an object silently —
 every step is logged.
 
