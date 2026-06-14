@@ -74,16 +74,21 @@ class Foundry:
         object_schema_path: str = "schema/object_schema.json",
         boxes_path: str = "schema/boxes.json",
         roles_path: str = "schema/roles.json",
+        objects: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        """Run the full Foundry pipeline and return a render-ready result."""
+        """Run the full Foundry pipeline and return a render-ready result.
+
+        If `objects` is given (e.g. the live system-of-record state), the pipeline
+        runs over those; otherwise it loads the seed file.
+        """
         ctx = RunContext(source_data_path=objects_path, source_schema_path=object_schema_path)
         self.shadow.bind_run(ctx.run_id)
         ctx.status = "running"
 
         self.shadow.observe_task_start("foundry", "pipeline", objects=objects_path)
 
-        # Load
-        objects = load_objects(str(self.base_dir / objects_path))
+        # Load (provided live state, or the seed file)
+        objects = objects if objects is not None else load_objects(str(self.base_dir / objects_path))
         schema = load_schema(str(self.base_dir / object_schema_path))
         boxes = json.loads((self.base_dir / boxes_path).read_text(encoding="utf-8"))
         roles = json.loads((self.base_dir / roles_path).read_text(encoding="utf-8"))
