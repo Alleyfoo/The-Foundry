@@ -23,7 +23,9 @@ class SystemOfRecord:
     def __init__(self, db_path: str = "artifacts/foundry.db"):
         self.path = Path(db_path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.path))
+        # check_same_thread=False so a single connection can be reused across
+        # Streamlit reruns (access is serialised; fine for this demo).
+        self._conn = sqlite3.connect(str(self.path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_tables()
 

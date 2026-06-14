@@ -3,8 +3,10 @@ The Foundry — Streamlit web frontend.
 
 Turning incoming business chaos into trusted, structured change.
 
-A thin shell over runtime/foundry.py. Users see simple views; the system sees
-governed change. Run with:
+A thin shell over the runtime. Objects live in a SQLite system of record; you can
+drop in raw inputs (intake), drive them through the spine (activate → submit →
+approve → commit), and watch the analysis update. Users see simple views; the
+system sees governed change.
 
     streamlit run streamlit_app.py
 """
@@ -17,18 +19,33 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from runtime.foundry import Foundry
+from runtime.foundry import Foundry, load_objects
+from runtime.system_of_record import SystemOfRecord
+from runtime.actions import intake, triage_text, available_actions, apply_action
 
 BASE_DIR = Path(__file__).resolve().parent
 
 BOX_ICON = {"create": "➕", "modify": "✏️", "plan": "📅", "control": "🛡️", "reference": "📄"}
 STATE_ICON = {"active": "🟢", "pending": "🟡", "blocked": "🔴", "draft": "⚪", "retired": "⚫"}
 COMMIT_ICON = {"proposal": "💡", "workflow": "⚙️", "truth": "🔒"}
+SOURCES = ["form", "email", "pdf", "excel", "chat", "api"]
+
+OBJ_COLS = ["object_id", "object_type", "title", "box", "stream",
+            "owner_team", "state", "commitment", "confidence", "aging_days"]
 
 
 # ----------------------------------------------------------------------
-def run_foundry() -> dict:
-    return Foundry(base_dir=str(BASE_DIR)).run()
+@st.cache_resource
+def get_sor() -> SystemOfRecord:
+    """One system-of-record per server, seeded from the object file."""
+    sor = SystemOfRecord(str(BASE_DIR / "artifacts" / "foundry.db"))
+    sor.seed_if_empty(load_objects(str(BASE_DIR / "data" / "objects.json")))
+    return sor
+
+
+def refresh(sor: SystemOfRecord) -> None:
+    """Re-run the pipeline over the live system-of-record state."""
+    st.session_state["result"] = Foundry(base_dir=str(BASE_DIR)).run(objects=sor.all_objects())
 
 
 def to_df(records, columns=None) -> pd.DataFrame:
@@ -45,12 +62,11 @@ def to_df(records, columns=None) -> pd.DataFrame:
     return df
 
 
-OBJ_COLS = ["object_id", "object_type", "title", "box", "stream",
-            "owner_team", "state", "commitment", "confidence", "aging_days"]
-
-
 # ----------------------------------------------------------------------
 st.set_page_config(page_title="The Foundry", page_icon="🔥", layout="wide")
+sor = get_sor()
+if "result" not in st.session_state:
+    refresh(sor)
 
 st.title("🔥 The Foundry")
 st.markdown(
@@ -62,9 +78,12 @@ st.markdown(
 with st.sidebar:
     st.header("The Foundry")
     st.caption("Documents are inputs, not the truth. The truth is the structured record.")
-    if st.button("🔥  Run the Foundry", type="primary", width="stretch"):
-        with st.spinner("Intake → triage → impact → approval → commit …"):
-            st.session_state["result"] = run_foundry()
+    if st.button("🔄  Re-run pipeline", width="stretch"):
+        refresh(sor)
+    if st.button("♻️  Reset to seed", width="stretch"):
+        sor.reset(load_objects(str(BASE_DIR / "data" / "objects.json")))
+        refresh(sor)
+        st.toast("Reset to seed objects.")
     st.divider()
     st.markdown(
         "**The spine**\n\n"
@@ -72,36 +91,80 @@ with st.sidebar:
         "_Users see tools. The system sees governed change._"
     )
 
-result = st.session_state.get("result")
-if result is None:
-    st.info("Press **🔥 Run the Foundry** in the sidebar to forge the object set into governed change.")
-    st.stop()
-
+result = st.session_state["result"]
 objects = result["objects"]
 obj_by_id = {o["object_id"]: o for o in objects}
+roles = result["roles"]
+access = roles["access_model"]
 
 # Top metrics
 c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Objects in flight", len(result["in_flight"]))
 c2.metric("Committed truth 🔒", len(result["committed"]))
 c3.metric("Bottlenecks 🔴", len(result["bottlenecks"]))
-c4.metric("Access mismatches", len(result["mismatches"]),
-          delta=None if not result["mismatches"] else "exposed", delta_color="inverse")
+c4.metric("Access mismatches", len(result["mismatches"]))
 c5.metric("Needs a human", sum(1 for t in result["triage"] if t["needs_human"]))
 
 tabs = st.tabs([
-    "The Story", "The Five Boxes", "Governance Map",
+    "Intake", "Actions", "The Story", "The Five Boxes", "Governance Map",
     "Bottlenecks & Aging", "Access Mismatches", "Monitoring Lenses", "Audit Trail",
 ])
 
-# --- The Story (org chart through access) ---
+# --- Intake (drop in chaos) ---
 with tabs[0]:
+    st.subheader("Intake — drop in chaos, watch it get sorted")
+    st.caption("Triage reads the input, sorts it into one of the five boxes, and gives it a confidence.")
+    raw = st.text_area("Raw input", placeholder="e.g. Customer Acme wants a waterproof handle variant")
+    if raw.strip():
+        preview = triage_text(raw)
+        st.info(f"Preview → box **{BOX_ICON.get(preview['box'],'')} {preview['box']}** · "
+                f"stream **{preview['stream']}** · confidence **{preview['confidence']}**")
+    src = st.selectbox("Source", SOURCES)
+    if st.button("🔥 Forge into an object", type="primary", disabled=not raw.strip()):
+        obj = intake(sor, raw, src)
+        refresh(sor)
+        st.success(f"Created **{obj['object_id']}** → box `{obj['box']}`, "
+                   f"stream `{obj['stream']}`, confidence {obj['confidence']}, state `draft`.")
+
+# --- Actions (drive the spine) ---
+with tabs[1]:
+    st.subheader("Drive an object through the spine")
+    st.caption("Approve / reject are Control actions — only a control-authorised role may do them.")
+    actor = st.selectbox("Acting as role", [r["role"] for r in roles["roles"]], index=2)
+    ids = [o["object_id"] for o in objects]
+    sel = st.selectbox(
+        "Object", ids,
+        format_func=lambda i: (f"{i} — {obj_by_id[i]['title'][:50]} ({obj_by_id[i]['state']})"
+                               if i in obj_by_id else i),
+    )
+    obj = obj_by_id.get(sel)
+    if obj:
+        st.markdown(
+            f"{STATE_ICON.get(obj['state'],'')} **{obj['state']}** · "
+            f"{COMMIT_ICON.get(obj['commitment'],'')} {obj['commitment']} · "
+            f"box `{obj['box']}` · owner **{obj['owner_team']}** · "
+            f"approver **{obj.get('approver_role') or '—'}** · "
+            f"SoR `{obj.get('system_of_record_ref') or '—'}`"
+        )
+        acts = available_actions(obj)
+        if not acts:
+            st.info("No actions available — this object is in a terminal state.")
+        else:
+            cols = st.columns(len(acts))
+            for col, act in zip(cols, acts):
+                if col.button(act, key=f"act_{act}", width="stretch"):
+                    r = apply_action(sor, sel, act, actor, access)
+                    refresh(sor)
+                    (st.success if r["ok"] else st.error)(r["message"])
+                    st.rerun()
+
+# --- The Story (org chart through access) ---
+with tabs[2]:
     st.subheader("An org chart shows titles. The Foundry shows access.")
     st.markdown(
         "Different roles have different *gravity* across the five boxes. The level "
         "isn't a title — it's **which governed box you can act in.**"
     )
-    roles = result["roles"]
     role_rows = [
         {"Level": r["level"], "Role": r["role"],
          "Dominant box": r["dominant_box"], "Responsibility": r["responsibility"]}
@@ -109,18 +172,17 @@ with tabs[0]:
     ]
     st.table(pd.DataFrame(role_rows))
     st.markdown("**Who can act in each box** (access ≠ title):")
-    access = roles["access_model"]["box_access"]
     acc_rows = [
         {"Box": f"{BOX_ICON.get(b,'')} {b}", "Primary owner": v["primary"],
          "Also touches": ", ".join(v["also"]) or "—"}
-        for b, v in access.items()
+        for b, v in access["box_access"].items()
     ]
     st.table(pd.DataFrame(acc_rows))
     for p in roles["principles"]:
         st.markdown(f"- {p}")
 
 # --- The Five Boxes ---
-with tabs[1]:
+with tabs[3]:
     st.subheader("The Foundry sorts incoming reality into five governed action families")
     st.caption(result["boxes"]["tagline"])
     cols = st.columns(5)
@@ -134,7 +196,7 @@ with tabs[1]:
                 st.markdown(
                     f"{STATE_ICON.get(o['state'],'')} **{o['object_id']}** "
                     f"{COMMIT_ICON.get(o['commitment'],'')}<br>"
-                    f"<span style='font-size:0.8em'>{o['title']}</span>",
+                    f"<span style='font-size:0.8em'>{o['title'][:40]}</span>",
                     unsafe_allow_html=True,
                 )
     st.divider()
@@ -142,16 +204,17 @@ with tabs[1]:
     st.dataframe(to_df(result["triage"]), width="stretch", height=300)
 
 # --- Governance Map (streams) ---
-with tabs[2]:
+with tabs[4]:
     st.subheader("Who owns reality, what is flowing, and where it gets stuck")
     for stream in ["customer", "item", "supplier"]:
         in_stream = [o for o in objects if o["stream"] == stream]
         st.markdown(f"#### {stream.title()} stream  ·  {len(in_stream)} objects")
-        st.dataframe(to_df(in_stream, OBJ_COLS), width="stretch",
-                     height=min(40 + 35 * len(in_stream), 340))
+        if in_stream:
+            st.dataframe(to_df(in_stream, OBJ_COLS), width="stretch",
+                         height=min(40 + 35 * len(in_stream), 340))
 
 # --- Bottlenecks & Aging ---
-with tabs[3]:
+with tabs[5]:
     st.subheader("Better visibility of bottlenecks and aging work")
     bn = result["bottlenecks"]
     if not bn:
@@ -166,8 +229,8 @@ with tabs[3]:
                 f"aging **{b['aging_days']}d** · downstream impact: {b['downstream_count']}"
             )
 
-# --- Access Mismatches (the payoff) ---
-with tabs[4]:
+# --- Access Mismatches ---
+with tabs[6]:
     st.subheader("Where access and responsibility disagree, the Foundry exposes it")
     st.caption("Access is a claim about responsibility. The system does not paper over the gap.")
     ms = result["mismatches"]
@@ -188,7 +251,7 @@ with tabs[4]:
             )
 
 # --- Monitoring Lenses ---
-with tabs[5]:
+with tabs[7]:
     st.subheader("Same objects, different maps")
     st.caption("Customer · Sales · Product · Operations · Finance — each lens shows what that function owns.")
     lens_tabs = st.tabs([l.title() for l in result["lenses"]])
@@ -201,19 +264,16 @@ with tabs[5]:
                 st.info("No objects in this lens.")
 
 # --- Audit Trail ---
-with tabs[6]:
+with tabs[8]:
     st.subheader("The invisible eye — every step, logged")
-    st.caption("Trusted outcomes: traceable, compliant, auditable. No opinions, no intervention.")
+    st.caption("Trusted outcomes: traceable, compliant, auditable.")
+    st.markdown("**System-of-record events** (intake, actions, commits):")
+    events = sor.events()
+    if events:
+        ev = pd.DataFrame(events)[["ts", "object_id", "action", "from_state", "to_state", "actor_role", "note"]]
+        ev["ts"] = ev["ts"].map(lambda t: t.split("T")[-1][:8] if isinstance(t, str) and "T" in t else t)
+        st.dataframe(ev, width="stretch", height=300)
+    else:
+        st.info("No events yet.")
+    st.markdown("**Pipeline shadow log** (this run):")
     st.json(result["metrics"])
-    log = result["store"].read_shadow(result["run_id"])
-    if log:
-        df = pd.DataFrame([
-            {
-                "time": e.get("timestamp", "").split("T")[-1][:8],
-                "agent": e.get("agent_name", ""),
-                "event": e.get("event_type", ""),
-                "detail": json.dumps(e.get("detail", {}), default=str)[:160],
-            }
-            for e in log
-        ])
-        st.dataframe(df, width="stretch", height=380)
