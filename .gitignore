@@ -30,3 +30,6 @@ Thumbs.db
 
 # Generated artifacts
 artifacts/
+
+# Internal session notes (local-only)
+.handoff.md

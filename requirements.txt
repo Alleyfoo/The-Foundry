@@ -1,0 +1,4 @@
+# The Spring — runtime is pure standard library.
+# The only external dependencies are for the Streamlit web frontend.
+streamlit==1.50.0
+pandas>=2.0

@@ -84,18 +84,51 @@ The maps differ; the source of truth does not.
 ## Repo layout
 
 ```
-/schema     source schema + four view schemas + the meta-schema (definition of definition)
-/data       the product dataset (industrial fasteners)
-/runtime    orchestrator (puhemies), validator, transforms, janitor, judge, shadow
-/gui        four-panel Tkinter overview, each panel expandable to full detail
-/artifacts  run outputs — view exports, validation reports, shadow logs
+/schema           source schema + four view schemas + the meta-schema (definition of definition)
+/data             the product dataset (industrial fasteners)
+/runtime          orchestrator (puhemies), validator, transforms, janitor, judge, shadow
+/gui              four-panel Tkinter overview, each panel expandable to full detail
+/artifacts        run outputs — view exports, validation reports, shadow logs
+streamlit_app.py  web frontend — a thin shell over the same runtime
+main.py           desktop frontend (Tkinter)
 ```
 
+The runtime is pure Python standard library. The frontends are thin shells over
+it — swapping a UI requires zero runtime changes.
+
 ## Running it
+
+Install dependencies (only needed for the web frontend; the runtime itself needs none):
+
+```bash
+pip install -r requirements.txt
+```
+
+**Web app (recommended):**
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Press **▶ Run pipeline** in the sidebar. The pipeline is fully self-contained —
+schema-driven transforms and a rule-based judge — so it needs no Ollama or cloud
+LLM to produce the four maps.
+
+**Desktop app (Tkinter):**
 
 ```bash
 python main.py
 ```
+
+## Deploying the demo (Streamlit Community Cloud)
+
+1. Push this repo to GitHub (public).
+2. At [share.streamlit.io](https://share.streamlit.io), create an app pointing at
+   this repo, branch `master`, main file `streamlit_app.py`.
+3. `requirements.txt` is picked up automatically; no secrets are required.
+
+The app writes run artifacts to `artifacts/` (gitignored, ephemeral on the cloud
+host) — nothing persistent or sensitive leaves the box.
 
 ---
 
