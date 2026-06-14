@@ -41,24 +41,27 @@ Ordered by how much each makes the demo *true*, not just prettier.
       (`artifacts/foundry.db`). Commit flips `commitment → truth` and mints a
       `system_of_record_ref`; every transition is in the event log.
 
-### P2 — Make it analytically real
+### P2 — Make it analytically real  ✅ DONE (commit fc36bd2)
 
-- [ ] **4. Impact statements.** Per change, generate "what this touches, what
-      breaks, downstream risk" (we only count downstream now). The deck's Impact box.
-- [ ] **5. Richer approval routing.** Route by confidence + risk + ownership
-      together, not just "has an approver."
-- [ ] **6. Lifecycle / disposition.** Archive / scrap / replacement-linked
-      transitions (slide 2: Disposition & Feedback).
+- [x] **4. Impact statements.** `foundry.py::_impact_statements` — per object: what
+      it touches, whether it affects committed truth, and a banded risk (explicit
+      additive score). Shown in the Impact & Approvals tab.
+- [x] **5. Richer approval routing.** `foundry.py::_route_approval` — routes by
+      confidence + risk + ownership; priority reflects urgency (aging); recommends
+      fast-track / standard / human-review / reroute (when the approver isn't
+      authorised for Control).
+- [x] **6. Lifecycle / disposition.** `actions.py` — mark_eol / archive / scrap /
+      link_replacement. The Governance Map shows the lifecycle/afterlife.
 
 ### P3 — Hardening for public
 
 - [ ] **7. `/tests`.** Schema validation, pipeline outputs, mismatch detection.
       Verification is a manual AppTest run today.
 - [ ] **8. Housekeeping.** Decide the fate of the orphaned
-      `definition_of_definition.json`; add object-id generation for intake objects.
+      `definition_of_definition.json`; ~~object-id generation for intake objects~~
+      (done in P1). Removed the stale `agent.md`.
 
-**Recommended sequence:** P1 in order (1 → 2 → 3), because it gives the visual
-governance map something *live* to draw, then P2, then P3.
+**Recommended sequence:** P1 → P2 done. P3 remaining, or pause for the design pass.
 
 ---
 
