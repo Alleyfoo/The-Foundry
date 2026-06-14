@@ -33,3 +33,9 @@ artifacts/
 
 # Internal session notes (local-only)
 .handoff.md
+
+# Design source (large mockup export — reference only, not app code)
+dashboard/
+
+# Local dev preview config
+.claude/launch.json

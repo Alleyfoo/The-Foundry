@@ -1,0 +1,267 @@
+"""
+The Foundry — UI theme and components.
+
+Matches the designer's light-theme mockup: Archivo display type, navy/orange
+palette, white cards, status colours (flowing green / pending amber / blocked red
+/ signal blue). Pure presentation; all data comes from the runtime.
+"""
+
+from __future__ import annotations
+
+import html
+from typing import Any
+
+import streamlit as st
+
+# --- Design tokens (from the mockup) ------------------------------------------
+NAVY = "#0f2a4d"
+BLUE = "#2563c9"
+ORANGE = "#e8732a"
+MUTED = "#5b6b7f"
+GREEN = "#2fa86a"
+AMBER = "#f1a73b"
+RED = "#e5484d"
+TEAL = "#0f8a8a"
+
+BOX_COLOR = {"create": BLUE, "modify": TEAL, "plan": AMBER, "control": RED, "reference": ORANGE}
+BOX_TINT = {"create": "#e7f0fb", "modify": "#dff3f3", "plan": "#fdeede",
+            "control": "#fde8e8", "reference": "#fdeede"}
+STATE_COLOR = {"active": GREEN, "pending": AMBER, "blocked": RED, "draft": "#94a3b8", "retired": MUTED}
+STATE_LABEL = {"active": "flowing", "pending": "pending", "blocked": "stuck",
+               "draft": "draft", "retired": "retired"}
+
+# Minimal inline line-icons (stroke = currentColor).
+ICONS = {
+    "inbox": '<path d="M3 12h4l2 3h6l2-3h4M3 12V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 12v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/>',
+    "funnel": '<path d="M3 4h18l-7 8v6l-4 2v-8z"/>',
+    "boxes": '<path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
+    "search": '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/>',
+    "nodes": '<circle cx="6" cy="12" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 12l8-5M8 12l8 5"/>',
+    "database": '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+    "create": '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/>',
+    "modify": '<path d="M4 20l4-1 10-10-3-3L5 16z"/><path d="M14 6l3 3"/>',
+    "plan": '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/>',
+    "control": '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    "reference": '<path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/>',
+}
+
+
+def _svg(name: str, color: str, size: int = 26) -> str:
+    return (f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" '
+            f'stroke="{color}" stroke-width="1.7" stroke-linecap="round" '
+            f'stroke-linejoin="round">{ICONS.get(name, "")}</svg>')
+
+
+def _e(s: Any) -> str:
+    return html.escape(str(s))
+
+
+# --- Global CSS ---------------------------------------------------------------
+def inject_css() -> None:
+    st.markdown(
+        """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&display=swap');
+
+html, body, [class*="css"], .stMarkdown, p, span, div { font-family: 'Archivo', system-ui, sans-serif; }
+h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800; color: #0f2a4d; letter-spacing: -0.01em; }
+#MainMenu, footer, header [data-testid="stToolbar"] { visibility: hidden; }
+.block-container { padding-top: 2.2rem; max-width: 1180px; }
+
+/* Section header with the orange accent bar */
+.fdy-head { border-left: 5px solid #e8732a; padding-left: 16px; margin: 4px 0 22px; }
+.fdy-head h2 { font-size: 2.0rem; margin: 0; }
+.fdy-head p { color: #5b6b7f; margin: 4px 0 0; font-size: 1.0rem; }
+
+/* Generic card + badges */
+.fdy-card { background:#fff; border:1px solid #e2e9f3; border-radius:14px;
+            box-shadow:0 1px 2px rgba(15,42,77,.04); padding:18px; }
+.fdy-badge { font-family:ui-monospace,monospace; font-size:.66rem; letter-spacing:.04em;
+             padding:3px 8px; border-radius:6px; text-transform:uppercase; white-space:nowrap; }
+.fdy-id { font-family:ui-monospace,monospace; font-size:.7rem; color:#94a3b8; }
+
+/* Spine */
+.fdy-spine { display:flex; align-items:flex-start; gap:2px; flex-wrap:nowrap; justify-content:center;
+             overflow-x:auto; margin:6px 0 10px; }
+.fdy-step { display:flex; flex-direction:column; align-items:center; width:118px; flex:none; text-align:center; }
+.fdy-circle { width:58px; height:58px; border-radius:50%; background:#e7f0fb; display:flex;
+              align-items:center; justify-content:center; margin-bottom:10px; }
+.fdy-pill { background:#0f2a4d; color:#fff; font-weight:700; font-size:.82rem; padding:5px 14px; border-radius:7px; }
+.fdy-step small { color:#5b6b7f; font-size:.72rem; display:block; margin-top:8px; line-height:1.25; }
+.fdy-arrow { color:#94a3b8; font-size:1.3rem; padding-top:20px; }
+
+/* Five boxes */
+.fdy-box { background:#fff; border:1px solid #e2e9f3; border-top:4px solid var(--bc); border-radius:14px;
+           padding:18px 16px; text-align:center; height:100%; }
+.fdy-box .ic { width:54px; height:54px; border-radius:50%; background:var(--bt); display:flex;
+               align-items:center; justify-content:center; margin:0 auto 12px; }
+.fdy-box h3 { margin:.2rem 0; font-size:1.25rem; }
+.fdy-box .mean { color:#3c4b60; font-size:.84rem; min-height:34px; }
+.fdy-box .ex { color:#7a899c; font-size:.76rem; margin-top:8px; }
+.fdy-box .cnt { font-size:2rem; font-weight:800; color:var(--bc); margin-top:6px; }
+
+/* Role ladder */
+.fdy-role { display:flex; align-items:center; gap:16px; background:#fff; border:1px solid #e9eef6;
+            border-radius:12px; padding:12px 16px; margin-bottom:10px; }
+.fdy-lvl { width:34px; height:34px; border-radius:50%; background:#2563c9; color:#fff; font-weight:800;
+           display:flex; align-items:center; justify-content:center; flex:none; }
+.fdy-role .nm { font-weight:700; color:#0f2a4d; min-width:190px; }
+.fdy-zone { background:#eef5fd; border:1px solid #d9e7f8; border-radius:8px; padding:6px 14px; text-align:center; min-width:150px; }
+.fdy-zone .z1 { color:#7a899c; font-size:.66rem; text-transform:uppercase; letter-spacing:.04em; }
+.fdy-zone .z2 { color:#2563c9; font-weight:800; }
+.fdy-role .resp { color:#5b6b7f; font-size:.9rem; }
+
+/* Stream flow */
+.fdy-stream { background:var(--sb); border:1px solid var(--sbd); border-radius:14px; padding:14px;
+              margin-bottom:16px; display:flex; align-items:center; gap:6px; overflow-x:auto; }
+.fdy-stream .slab { font-weight:800; color:var(--sc); min-width:120px; line-height:1.15; }
+.fdy-node { background:#fff; border:1px solid #e2e9f3; border-left:3px solid var(--nc); border-radius:10px;
+            padding:10px 12px; min-width:150px; }
+.fdy-node .tag { background:#eef5fd; color:#4a6391; font-family:ui-monospace,monospace; font-size:.6rem;
+                 padding:2px 6px; border-radius:5px; text-transform:uppercase; }
+.fdy-node .nt { font-weight:700; color:#0f2a4d; font-size:.9rem; margin-top:6px; }
+.fdy-node .ns { color:#7a899c; font-size:.74rem; }
+.fdy-flowarrow { font-size:1.2rem; flex:none; }
+
+/* Bottleneck cards */
+.fdy-bn { background:#fff; border:1px solid #e9eef6; border-left:5px solid var(--bnc); border-radius:12px; padding:16px; }
+.fdy-bn .top { display:flex; align-items:center; justify-content:space-between; }
+.fdy-bn .dot { width:22px; height:22px; border-radius:50%; background:var(--bnc); color:#fff;
+               display:inline-flex; align-items:center; justify-content:center; font-size:.7rem; }
+.fdy-bn h4 { margin:10px 0 4px; font-size:1.05rem; }
+.fdy-bn .meta { color:#5b6b7f; font-size:.82rem; }
+.fdy-agewrap { height:8px; background:#eef2f7; border-radius:5px; margin:10px 0 6px; overflow:hidden; }
+.fdy-agebar { height:8px; border-radius:5px; background:linear-gradient(90deg,#f1a73b,var(--bnc)); }
+</style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def section_header(title: str, subtitle: str = "") -> None:
+    st.markdown(
+        f'<div class="fdy-head"><h2>{_e(title)}</h2>'
+        f'{f"<p>{_e(subtitle)}</p>" if subtitle else ""}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def badge(text: str, color: str, bg: str) -> str:
+    return f'<span class="fdy-badge" style="color:{color};background:{bg}">{_e(text)}</span>'
+
+
+# --- The spine ----------------------------------------------------------------
+def spine(metrics: list[tuple[str, str, str]]) -> None:
+    """metrics: list of (label, sub, badge_html) for the six steps."""
+    steps = [
+        ("inbox", "Inputs", "Email, PDF, Excel, chat, form, API"),
+        ("funnel", "Triage", "What is it? What does it affect? How sure?"),
+        ("boxes", "Five Boxes", "Create, Modify, Plan, Control, Reference"),
+        ("search", "Impact", "Changes, risks, downstream effects"),
+        ("nodes", "Approval", "Route by confidence, risk, ownership"),
+        ("database", "Commit", "Write to system of record + audit"),
+    ]
+    parts = ['<div class="fdy-spine">']
+    for i, (icon, label, sub) in enumerate(steps):
+        extra = metrics[i] if i < len(metrics) else ""
+        parts.append(
+            f'<div class="fdy-step"><div class="fdy-circle">{_svg(icon, BLUE)}</div>'
+            f'<div class="fdy-pill">{label}</div><small>{sub}</small>'
+            f'<div style="margin-top:8px">{extra}</div></div>'
+        )
+        if i < len(steps) - 1:
+            parts.append('<div class="fdy-arrow">→</div>')
+    parts.append('</div>')
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+# --- Five boxes ---------------------------------------------------------------
+def five_boxes(boxes: dict[str, Any], objects: list[dict[str, Any]]) -> None:
+    cols = st.columns(5)
+    for col, box in zip(cols, boxes["boxes"]):
+        bid = box["id"]
+        n = sum(1 for o in objects if o["box"] == bid)
+        bc, bt = BOX_COLOR[bid], BOX_TINT[bid]
+        tag = "TOUCHES LIVE TRUTH" if box.get("touches_live_truth") else "NO LIVE CHANGE"
+        tagbg = "#fdeede" if box.get("touches_live_truth") else "#eef2f7"
+        tagcol = ORANGE if box.get("touches_live_truth") else MUTED
+        with col:
+            st.markdown(
+                f'<div class="fdy-box" style="--bc:{bc};--bt:{bt}">'
+                f'<div class="ic">{_svg(bid, bc, 24)}</div>'
+                f'<h3>{_e(box["name"])}</h3>'
+                f'<div class="mean">{_e(box["meaning"])}</div>'
+                f'<div class="ex"><b style="color:{BLUE}">Examples:</b> {_e(", ".join(box["examples"]))}</div>'
+                f'<div class="cnt">{n}</div>'
+                f'<div style="color:#7a899c;font-size:.7rem;margin-bottom:8px">in flight</div>'
+                f'{badge(tag, tagcol, tagbg)}</div>',
+                unsafe_allow_html=True,
+            )
+
+
+# --- Role ladder --------------------------------------------------------------
+def role_ladder(roles: dict[str, Any]) -> None:
+    for r in sorted(roles["roles"], key=lambda r: -r["level"]):
+        st.markdown(
+            f'<div class="fdy-role"><div class="fdy-lvl">{r["level"]}</div>'
+            f'<div class="nm">{_e(r["role"])}</div>'
+            f'<div class="fdy-zone"><div class="z1">Dominant zone</div>'
+            f'<div class="z2">{_e(r["dominant_box"].replace("_", " ").title())}</div></div>'
+            f'<div class="resp">{_e(r["responsibility"])}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+
+# --- Stream flow --------------------------------------------------------------
+_STREAM_THEME = {
+    "customer": ("#eef5fd", "#d9e7f8", BLUE),
+    "item": ("#fdf2ea", "#f6dcc6", ORANGE),
+    "supplier": ("#eafaf6", "#cdebe0", TEAL),
+}
+
+
+def stream_flow(stream: str, label: str, objects: list[dict[str, Any]]) -> None:
+    sb, sbd, sc = _STREAM_THEME.get(stream, ("#f4f7fb", "#e2e9f3", NAVY))
+    nodes = sorted(objects, key=lambda o: o["object_id"])
+    parts = [f'<div class="fdy-stream" style="--sb:{sb};--sbd:{sbd};--sc:{sc}">'
+             f'<div class="slab">{_e(label)}</div>']
+    for i, o in enumerate(nodes):
+        nc = STATE_COLOR.get(o["state"], MUTED)
+        parts.append(
+            f'<div class="fdy-node" style="--nc:{nc}">'
+            f'<span class="tag">{_e(o["owner_team"])}</span> '
+            f'<span class="fdy-id">{_e(o["object_id"])}</span>'
+            f'<div class="nt">{_e(o["object_type"])}</div>'
+            f'<div class="ns">{_e(o["title"][:30])}</div></div>'
+        )
+        if i < len(nodes) - 1:
+            nxt = nodes[i + 1]
+            col = STATE_COLOR.get(nxt["state"], MUTED)
+            dashed = nxt["object_type"] == "Signal" or nxt["box"] == "plan"
+            arrow = "⇢" if dashed else "→"
+            parts.append(f'<span class="fdy-flowarrow" style="color:{col}">{arrow}</span>')
+    parts.append('</div>')
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+# --- Bottleneck cards ---------------------------------------------------------
+def bottleneck_cards(bottlenecks: list[dict[str, Any]]) -> None:
+    cols = st.columns(2)
+    for i, b in enumerate(bottlenecks):
+        bnc = RED if b["reason"] == "blocked" else AMBER
+        label = "BLOCKED" if b["reason"] == "blocked" else "PENDING"
+        pct = min(100, b["aging_days"] / 10 * 100)
+        with cols[i % 2]:
+            st.markdown(
+                f'<div class="fdy-bn" style="--bnc:{bnc};margin-bottom:16px">'
+                f'<div class="top"><span><span class="dot">!</span> '
+                f'<span class="fdy-id">{_e(b["object_id"])}</span></span>'
+                f'{badge(label, bnc, "#fde8e8" if b["reason"]=="blocked" else "#fdeede")}</div>'
+                f'<h4>{_e(b["title"])}</h4>'
+                f'<div class="meta">owner <b>{_e(b["owner_team"])}</b> · state {_e(b["state"])}</div>'
+                f'<div style="display:flex;justify-content:space-between;font-size:.75rem;color:#7a899c;margin-top:10px">'
+                f'<span>Aging</span><span style="color:{bnc};font-weight:700">{b["aging_days"]} days</span></div>'
+                f'<div class="fdy-agewrap"><div class="fdy-agebar" style="width:{pct}%"></div></div>'
+                f'<div class="meta">downstream impact: <b>{b["downstream_count"]} object(s)</b></div></div>',
+                unsafe_allow_html=True,
+            )
