@@ -1,0 +1,53 @@
+{
+  "title": "Roles and Ownership — the org chart shown through access",
+  "description": "An org chart shows a company as boxes of titles. The Foundry shows the same company through access: which governed boxes a role can act in. Different roles have different gravity across the five boxes.",
+  "principles": [
+    "Primary ownership is not exclusive permission.",
+    "Most roles touch adjacent boxes too.",
+    "Reference / evidence cuts across every level.",
+    "Users should see role-based tools, not the whole backend ontology."
+  ],
+  "roles": [
+    {
+      "level": 1,
+      "role": "Data Entry / Operations",
+      "dominant_box": "create",
+      "responsibility": "adds new records and requests"
+    },
+    {
+      "level": 2,
+      "role": "Specialist / Analyst / Owner",
+      "dominant_box": "modify",
+      "responsibility": "maintains and improves existing reality"
+    },
+    {
+      "level": 3,
+      "role": "Manager",
+      "dominant_box": "control",
+      "responsibility": "approves, escalates, handles exceptions"
+    },
+    {
+      "level": 4,
+      "role": "Director / Head of Function",
+      "dominant_box": "plan",
+      "responsibility": "coordinates priorities and upcoming work"
+    },
+    {
+      "level": 5,
+      "role": "CEO / Executive",
+      "dominant_box": "future_horizon",
+      "responsibility": "sets strategic direction and long-term intent"
+    }
+  ],
+  "access_model": {
+    "note": "Access is which boxes a role can act in — not a job title. Where access and responsibility disagree, the Foundry exposes the mismatch.",
+    "box_access": {
+      "create":    { "primary": "Data Entry / Operations",      "also": ["Specialist / Analyst / Owner"] },
+      "modify":    { "primary": "Specialist / Analyst / Owner", "also": ["Data Entry / Operations", "Manager"] },
+      "control":   { "primary": "Manager",                      "also": ["Director / Head of Function"] },
+      "plan":      { "primary": "Director / Head of Function",  "also": ["CEO / Executive", "Manager"] },
+      "reference": { "primary": "All",                          "also": [] }
+    }
+  },
+  "monitoring_lenses": ["customer", "sales", "product", "operations", "finance"]
+}

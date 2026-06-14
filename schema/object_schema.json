@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "The Foundry — Governed Object Schema (Source of Truth)",
+  "description": "Every important object that flows through the Foundry. A complete object describes how something enters, lives, changes, and leaves: it carries an owner, a state, and a lifecycle. Documents are inputs, not truth — the truth is this structured record.",
+  "type": "object",
+  "required": [
+    "object_id", "object_type", "world", "title", "box", "stream",
+    "owner_team", "state", "commitment"
+  ],
+  "properties": {
+    "object_id": {
+      "type": "string",
+      "pattern": "^OBJ-[A-Z]+[0-9]+$",
+      "description": "Stable, dumb reference key. Means nothing on its own."
+    },
+    "object_type": {
+      "type": "string",
+      "enum": [
+        "Customer", "Contact", "Signal", "Feature Candidate", "Planning Review",
+        "Sales Request", "Item Request", "Validation Check", "Approval Task",
+        "Item", "Price", "Availability", "Lifecycle", "Afterlife",
+        "Supplier Document", "Reference Object", "Enrichment Task",
+        "SAP Item Master", "SAP Update"
+      ],
+      "description": "What kind of thing this is (the noun)."
+    },
+    "world": {
+      "type": "string",
+      "enum": ["outside", "internal"],
+      "description": "Where it came from. Outside world (customers, suppliers) or internal world (the company)."
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Human-readable name for this object."
+    },
+    "box": {
+      "type": "string",
+      "enum": ["create", "modify", "plan", "control", "reference"],
+      "description": "The governed action family this object is routed into. See boxes.json."
+    },
+    "stream": {
+      "type": "string",
+      "enum": ["customer", "item", "supplier"],
+      "description": "Which governance stream (flow) this object belongs to."
+    },
+    "owner_team": {
+      "type": "string",
+      "enum": [
+        "Sales", "Product Data", "Pricing", "Operations", "Product Manager",
+        "Product Owner", "Manager", "SAP Owner", "Records Owner", "Suppliers"
+      ],
+      "description": "Who owns this object — who is accountable when it is wrong. Ownership is not exclusive permission."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["draft", "active", "pending", "blocked", "retired"],
+      "description": "Operational state. active = flowing, pending = waiting, blocked = stuck (a bottleneck)."
+    },
+    "commitment": {
+      "type": "string",
+      "enum": ["proposal", "workflow", "truth"],
+      "description": "How hard this object is. proposal = someone said it; workflow = being processed; truth = committed to the system of record."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Triage confidence — how sure the Foundry is about what this object is and what it affects."
+    },
+    "aging_days": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How long this object has sat in its current state. Operational pressure."
+    },
+    "approver_role": {
+      "type": ["string", "null"],
+      "description": "Who must approve before this can commit to truth. Null if no approval required."
+    },
+    "source_input": {
+      "type": "string",
+      "enum": ["email", "pdf", "excel", "chat", "form", "api", "internal"],
+      "description": "How this entered the Foundry. Documents are inputs, not the truth."
+    },
+    "lifecycle": {
+      "type": "string",
+      "enum": ["none", "end_of_life", "scrap", "replacement_linked", "archived"],
+      "description": "Disposition. How the object leaves: archive, recycle, scrap, replacement linked."
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Supporting documents / context. Evidence and audit, not master data."
+    },
+    "downstream": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "object_ids this object affects if it changes — the downstream impact."
+    },
+    "system_of_record_ref": {
+      "type": ["string", "null"],
+      "description": "Reference in the system of record (SAP) once committed to truth. Null until committed."
+    },
+    "created_at": {
+      "type": "string",
+      "description": "When this object entered the Foundry (ISO date)."
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "When this object last changed state (ISO date)."
+    }
+  }
+}

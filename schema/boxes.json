@@ -1,0 +1,42 @@
+{
+  "title": "The Five Boxes",
+  "description": "The Foundry sorts incoming reality into a small number of governed action families. A box is not just a folder — it is a governed action family. Documents enter the process through one of these boxes.",
+  "tagline": "Simple boxes. Clear routing. Lower chaos.",
+  "boxes": [
+    {
+      "id": "create",
+      "name": "Create",
+      "meaning": "Bring a new thing into the system.",
+      "examples": ["new item", "new record", "new request"],
+      "touches_live_truth": true
+    },
+    {
+      "id": "modify",
+      "name": "Modify",
+      "meaning": "Change something that already exists.",
+      "examples": ["price update", "lead time", "attribute change"],
+      "touches_live_truth": true
+    },
+    {
+      "id": "plan",
+      "name": "Plan",
+      "meaning": "Prepare future work without touching live reality yet.",
+      "examples": ["roadmap", "draft launch", "future project"],
+      "touches_live_truth": false
+    },
+    {
+      "id": "control",
+      "name": "Control",
+      "meaning": "Approve, reject, route, or govern a change.",
+      "examples": ["approval", "escalation", "exception", "release"],
+      "touches_live_truth": true
+    },
+    {
+      "id": "reference",
+      "name": "Reference",
+      "meaning": "Store evidence or context without directly changing the system.",
+      "examples": ["spec sheet", "certificate", "email", "attachment"],
+      "touches_live_truth": false
+    }
+  ]
+}
