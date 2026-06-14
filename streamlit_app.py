@@ -58,6 +58,23 @@ def read_artifact(store, run_id: str, key: str):
         return None
 
 
+def to_df(records) -> pd.DataFrame:
+    """Build a display DataFrame that is safe for Streamlit's Arrow conversion.
+
+    Arrow rejects a column that mixes scalars and lists/dicts (e.g. a schema
+    `type` that is sometimes "string" and sometimes ["string", "null"], or a
+    product field holding a list of approved uses). Stringify any nested cell so
+    every column is a flat, Arrow-friendly type.
+    """
+    df = pd.DataFrame(records)
+    for col in df.columns:
+        if df[col].map(lambda v: isinstance(v, (list, dict))).any():
+            df[col] = df[col].map(
+                lambda v: json.dumps(v, default=str) if isinstance(v, (list, dict)) else v
+            )
+    return df
+
+
 # ----------------------------------------------------------------------
 # Page setup
 # ----------------------------------------------------------------------
@@ -143,7 +160,7 @@ with tab_views:
                     f"records valid · {report.get('violation_count', 0)} violations"
                 )
             if data:
-                st.dataframe(pd.DataFrame(data), use_container_width=True, height=420)
+                st.dataframe(to_df(data), use_container_width=True, height=420)
             else:
                 st.info("No data for this view.")
 
@@ -155,13 +172,13 @@ with tab_source:
         raw = json.loads(products_path.read_text(encoding="utf-8"))
         products = raw.get("products", raw) if isinstance(raw, dict) else raw
         st.caption(f"{len(products)} products · the single source the maps are drawn from")
-        st.dataframe(pd.DataFrame(products), use_container_width=True, height=360)
+        st.dataframe(to_df(products), use_container_width=True, height=360)
 
     matrix = read_artifact(store, run_id, "field_matrix.json")
     if matrix:
         st.subheader("Field coverage matrix")
         st.caption("Which source field appears in which view — what each traveller is allowed to see.")
-        st.dataframe(pd.DataFrame(matrix), use_container_width=True, height=360)
+        st.dataframe(to_df(matrix), use_container_width=True, height=360)
 
     schema_path = BASE_DIR / "schema" / "source_schema.json"
     if schema_path.exists():
@@ -184,7 +201,7 @@ with tab_valid:
                     "is_valid": r.get("is_valid", False),
                 })
     if rows:
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        st.dataframe(to_df(rows), use_container_width=True)
 
     st.subheader("Judge decisions")
     jrows = []
@@ -200,7 +217,7 @@ with tab_valid:
                     "suggestions": "; ".join(d.get("suggestions", [])),
                 })
     if jrows:
-        st.dataframe(pd.DataFrame(jrows), use_container_width=True)
+        st.dataframe(to_df(jrows), use_container_width=True)
 
     coverage = read_artifact(store, run_id, "view_coverage.json")
     if coverage:
