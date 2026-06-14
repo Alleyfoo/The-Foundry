@@ -130,6 +130,11 @@ python main.py
 The app writes run artifacts to `artifacts/` (gitignored, ephemeral on the cloud
 host) — nothing persistent or sensitive leaves the box.
 
+## License
+
+MIT — see [LICENSE](LICENSE). Use it, fork it, build on it; just keep the
+copyright notice.
+
 ---
 
 *Data is not reality. But it is all we have.*
