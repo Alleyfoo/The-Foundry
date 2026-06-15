@@ -111,18 +111,6 @@ h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800
 .fdy-zone .z2 { color:#2563c9; font-weight:800; }
 .fdy-role .resp { color:#5b6b7f; font-size:.9rem; }
 
-/* Stream flow */
-.fdy-stream { background:var(--sb); border:1px solid var(--sbd); border-radius:14px; padding:14px;
-              margin-bottom:16px; display:flex; align-items:center; gap:6px; overflow-x:auto; }
-.fdy-stream .slab { font-weight:800; color:var(--sc); min-width:120px; line-height:1.15; }
-.fdy-node { background:#fff; border:1px solid #e2e9f3; border-left:3px solid var(--nc); border-radius:10px;
-            padding:10px 12px; min-width:150px; }
-.fdy-node .tag { background:#eef5fd; color:#4a6391; font-family:ui-monospace,monospace; font-size:.6rem;
-                 padding:2px 6px; border-radius:5px; text-transform:uppercase; }
-.fdy-node .nt { font-weight:700; color:#0f2a4d; font-size:.9rem; margin-top:6px; }
-.fdy-node .ns { color:#7a899c; font-size:.74rem; }
-.fdy-flowarrow { font-size:1.2rem; flex:none; }
-
 /* Bottleneck cards */
 .fdy-bn { background:#fff; border:1px solid #e9eef6; border-left:5px solid var(--bnc); border-radius:12px; padding:16px; }
 .fdy-bn .top { display:flex; align-items:center; justify-content:space-between; }
@@ -172,6 +160,18 @@ h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800
 .fc-title { color:#5b6b7f; font-size:.76rem; margin:2px 0 6px; }
 .fc-rows > div { display:flex; justify-content:space-between; padding:2px 0; font-size:.72rem; color:#7a899c; }
 .fc-edge { display:flex; align-items:center; padding:0 3px; font-size:1.2rem; flex:none; }
+
+/* Ownership domains */
+.fdy-domhead { display:flex; justify-content:space-between; align-items:center; margin:2px 0 10px; }
+.fdy-domhead b { color:#0f2a4d; font-size:1.05rem; }
+.fdy-domhead .cnt { color:#7a899c; font-size:.7rem; background:#eef2f7; padding:3px 9px; border-radius:7px; }
+.fdy-ocard { background:#fff; border:1px solid #e2e9f3; border-left:3px solid var(--sc); border-radius:10px;
+             padding:11px 13px; }
+.oc-top { display:flex; justify-content:space-between; align-items:center; }
+.oc-type { color:#5b6b7f; font-size:.64rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.oc-title { color:#0f2a4d; font-weight:700; font-size:.9rem; margin:6px 0; }
+.oc-bot { display:flex; justify-content:space-between; align-items:center; font-size:.73rem; }
+.oc-owner { background:#eef2f7; color:#4a6391; padding:2px 8px; border-radius:6px; }
 </style>
         """,
         unsafe_allow_html=True,
@@ -413,6 +413,22 @@ def flow_row(title: str, nodes: list[dict[str, Any]]) -> None:
             h.append(f'<span class="fc-edge" style="color:{edge_col[et]}">{edge_glyph[et]}</span>')
     h.append('</div>')
     st.markdown("".join(h), unsafe_allow_html=True)
+
+
+# --- Ownership domain card ---
+def object_card(obj: dict[str, Any]) -> str:
+    """A compact object card for the ownership columns (returns HTML)."""
+    sc = STATE_COLOR.get(obj["state"], MUTED)
+    cbg, cfg = _COMMIT_TINT.get(obj["commitment"], ("#eef2f7", MUTED))
+    return (
+        f'<div class="fdy-ocard" style="--sc:{sc}">'
+        f'<div class="oc-top"><span class="oc-type">{_e(obj["object_type"])}</span>'
+        f'{badge(obj["commitment"], cfg, cbg)}</div>'
+        f'<div class="oc-title">{_e(obj["title"][:34])}</div>'
+        f'<div class="oc-bot"><span class="oc-owner">{_e(obj["owner_team"])}</span>'
+        f'<span style="color:{sc};font-weight:700">{_e(STATE_LABEL.get(obj["state"], obj["state"]))}</span>'
+        f'</div></div>'
+    )
 
 
 # --- Bottleneck cards ---------------------------------------------------------

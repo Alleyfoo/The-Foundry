@@ -100,12 +100,20 @@ spine_badges[5] = ui.badge(f"{len(result['committed'])} committed", ui.GREEN, "#
 ui.spine(spine_badges)
 st.caption("Users see tools. The system sees governed change.")
 
-(tab_scenario, tab_intake, tab_objects, tab_story, tab_boxes, tab_map, tab_coverage,
- tab_bottlenecks, tab_impact, tab_mismatch, tab_lenses, tab_audit) = st.tabs([
+(tab_scenario, tab_intake, tab_objects, tab_story, tab_boxes, tab_map, tab_ownership,
+ tab_coverage, tab_bottlenecks, tab_impact, tab_mismatch, tab_lenses, tab_audit) = st.tabs([
     "▶ Scenario", "Intake", "Objects", "The Story", "The Five Boxes", "Governance Map",
-    "Coverage", "Bottlenecks & Aging", "Impact & Approvals", "Access Mismatches",
-    "Monitoring Lenses", "Audit Trail",
+    "Ownership", "Coverage", "Bottlenecks & Aging", "Impact & Approvals",
+    "Access Mismatches", "Monitoring Lenses", "Audit Trail",
 ])
+
+# Domains group the owning teams into the three ownership super-groups.
+DOMAINS = [
+    ("Sales Domain", "👥", ["Sales"]),
+    ("Product & Ops Domain", "📦", ["Product Manager", "Product Data", "Product Owner",
+                                    "Operations", "Suppliers"]),
+    ("Governance Domain", "🛡️", ["Pricing", "Manager", "SAP Owner", "Records Owner"]),
+]
 
 # --- Scenario (guided narrative walkthrough) ---
 with tab_scenario:
@@ -288,6 +296,30 @@ with tab_map:
             to_df(afterlife, ["object_id", "title", "lifecycle", "state", "owner_team"]),
             width="stretch", height=min(40 + 35 * len(afterlife), 240),
         )
+
+# --- Ownership View (objects grouped by the domain that owns them) ---
+with tab_ownership:
+    ui.section_header("Ownership View",
+                      "Every object grouped by the domain that owns it — who is "
+                      "accountable for what. Click a node to inspect it.")
+    dom_cols = st.columns(3)
+    for col, (name, icon, teams) in zip(dom_cols, DOMAINS):
+        with col:
+            members = [o for o in objects if o["owner_team"] in teams]
+            st.markdown(
+                f'<div class="fdy-domhead"><b>{icon} {name}</b>'
+                f'<span class="cnt">{len(members)} items</span></div>',
+                unsafe_allow_html=True,
+            )
+            for o in members:
+                st.markdown(ui.object_card(o), unsafe_allow_html=True)
+                if st.button(f"🔍 {o['object_id']}", key=f"own_{o['object_id']}", width="stretch"):
+                    st.session_state["selected_id"] = o["object_id"]
+                    st.rerun()
+    osid = st.session_state.get("selected_id")
+    if osid and osid in obj_by_id:
+        st.divider()
+        ui.object_detail(obj_by_id[osid], obj_by_id)
 
 # --- Coverage (which areas are governed, and how well) ---
 with tab_coverage:
