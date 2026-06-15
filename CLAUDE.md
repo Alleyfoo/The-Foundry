@@ -105,12 +105,17 @@ requirements.txt        — streamlit + pandas (runtime is pure stdlib)
 
 ## Frontend (Streamlit)
 
-`streamlit_app.py`, tabs: The Story (org chart through access), The Five Boxes,
-Governance Map (three streams), Bottlenecks & Aging, Access Mismatches, Monitoring
-Lenses, Audit Trail. Press **Run the Foundry** to run the pipeline.
+`streamlit_app.py` — light theme matching the design mockup, components in `ui.py`.
+Seven tabs: **Scenario** (guided walkthrough), **Objects** (intake + the clickable
+Object Explorer with a detail panel), **Governance Map** (the signal/flow view),
+**Ownership** (by domain), **Coverage** (governance grid + access mismatches),
+**Bottlenecks & Risk** (bottlenecks + impact/approvals), **Model & Audit** (roles +
+five boxes + monitoring lenses + audit trail). The pipeline runs automatically over
+the live system-of-record state; the sidebar has Re-run + Reset-to-seed.
 
 Run: `streamlit run streamlit_app.py`. Deploy: Streamlit Community Cloud, main file
-`streamlit_app.py`, no secrets.
+`streamlit_app.py`, no secrets. NOTE: after changing `ui.py`, **reboot** the cloud
+app (not just rerun) — Streamlit caches imported modules.
 
 ---
 
