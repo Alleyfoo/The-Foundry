@@ -415,6 +415,45 @@ def flow_row(title: str, nodes: list[dict[str, Any]]) -> None:
     st.markdown("".join(h), unsafe_allow_html=True)
 
 
+# --- Signal Universe (the whole object graph) ---
+def signal_universe_dot(objects: list[dict[str, Any]]) -> str:
+    """Build a Graphviz DOT graph of every object and its downstream edges."""
+    by_id = {o["object_id"]: o for o in objects}
+    out = [
+        'digraph G {',
+        'graph [layout="neato", overlap="false", splines="true", bgcolor="transparent", K="1.1"];',
+        'node [shape="box", style="filled,rounded", fontname="Archivo", fontsize="9", penwidth="2"];',
+        'edge [color="#cbd5e1", penwidth="1.3", arrowsize="0.6"];',
+    ]
+    for o in objects:
+        bt = BOX_TINT.get(o["box"], "#eef2f7")
+        sc = STATE_COLOR.get(o["state"], MUTED)
+        label = f'{o["object_type"]}\\n{o["object_id"]}'
+        out.append(f'"{o["object_id"]}" [label="{label}", fillcolor="{bt}", '
+                   f'color="{sc}", fontcolor="#0f2a4d"];')
+    for o in objects:
+        for d in o.get("downstream", []):
+            if d in by_id:
+                ec = STATE_COLOR.get(by_id[d]["state"], "#cbd5e1")
+                out.append(f'"{o["object_id"]}" -> "{d}" [color="{ec}"];')
+    out.append('}')
+    return "\n".join(out)
+
+
+def universe_legend() -> None:
+    swatches = "".join(
+        f'<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px">'
+        f'<span style="width:12px;height:12px;border-radius:3px;background:{BOX_TINT[b]};'
+        f'border:2px solid {BOX_COLOR[b]}"></span>{b}</span>'
+        for b in ["create", "modify", "plan", "control", "reference"]
+    )
+    st.markdown(
+        f'<div class="fdy-flegend"><b>Fill = box:</b>&nbsp; {swatches} '
+        f'<b>·&nbsp; border = status &nbsp;·&nbsp; arrows = downstream impact</b></div>',
+        unsafe_allow_html=True,
+    )
+
+
 # --- Ownership domain card ---
 def object_card(obj: dict[str, Any]) -> str:
     """A compact object card for the ownership columns (returns HTML)."""

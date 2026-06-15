@@ -100,9 +100,9 @@ spine_badges[5] = ui.badge(f"{len(result['committed'])} committed", ui.GREEN, "#
 ui.spine(spine_badges)
 st.caption("Users see tools. The system sees governed change.")
 
-(tab_scenario, tab_objects, tab_map, tab_ownership,
+(tab_scenario, tab_objects, tab_map, tab_universe, tab_ownership,
  tab_coverage, tab_risk, tab_model) = st.tabs([
-    "▶ Scenario", "Objects", "Governance Map", "Ownership",
+    "▶ Scenario", "Objects", "Governance Map", "Signal Universe", "Ownership",
     "Coverage", "Bottlenecks & Risk", "Model & Audit",
 ])
 # Consolidated layout: several sub-views render into shared tabs. Entering a tab
@@ -301,6 +301,20 @@ with tab_map:
             to_df(afterlife, ["object_id", "title", "lifecycle", "state", "owner_team"]),
             width="stretch", height=min(40 + 35 * len(afterlife), 240),
         )
+
+# --- Signal Universe (the whole object graph) ---
+with tab_universe:
+    ui.section_header("Signal Universe",
+                      "Every governed object and how it connects — the whole graph. "
+                      "Fill = box, border = status, arrows = downstream impact.")
+    ui.universe_legend()
+    st.graphviz_chart(ui.signal_universe_dot(objects), width="stretch")
+    uni_sel = st.selectbox("Inspect a node",
+                           [o["object_id"] for o in objects],
+                           format_func=lambda i: f"{i} — {obj_by_id[i]['object_type']}",
+                           key="uni_sel")
+    if uni_sel in obj_by_id:
+        ui.object_detail(obj_by_id[uni_sel], obj_by_id)
 
 # --- Ownership View (objects grouped by the domain that owns them) ---
 with tab_ownership:
