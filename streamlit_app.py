@@ -81,8 +81,8 @@ with st.sidebar:
         st.toast("Reset to seed objects.")
     st.divider()
     st.markdown(
-        "**The spine**\n\n"
-        "Inputs → Triage → Five Boxes → Impact → Approval → Commit\n\n"
+        "**Three lenses on one truth**\n\n"
+        "🗺️ Map · 🛡️ Coverage · 🔀 Flow\n\n"
         "_Users see tools. The system sees governed change._"
     )
 
@@ -157,8 +157,10 @@ with tab_scenario:
 
 # --- Intake (drop in chaos) ---
 with tab_intake:
-    ui.section_header("Intake — drop in chaos, watch it get sorted")
-    st.caption("Triage reads the input, sorts it into one of the five boxes, and gives it a confidence.")
+    ui.section_header(
+        "Intake",
+        "Drop in chaos, watch it get sorted — triage reads the input, sorts it into one "
+        "of the five boxes, and gives it a confidence.")
     raw = st.text_area("Raw input", placeholder="e.g. Customer Acme wants a waterproof handle variant")
     if raw.strip():
         preview = triage_text(raw)
@@ -173,8 +175,10 @@ with tab_intake:
 
 # --- Actions (drive the spine) ---
 with tab_actions:
-    ui.section_header("Drive an object through the spine")
-    st.caption("Approve / reject are Control actions — only a control-authorised role may do them.")
+    ui.section_header(
+        "Actions",
+        "Drive an object through the spine — approve and reject are Control actions, so "
+        "only a control-authorised role may do them.")
     actor = st.selectbox("Acting as role", [r["role"] for r in roles["roles"]], index=2)
     ids = [o["object_id"] for o in objects]
     sel = st.selectbox(
@@ -305,8 +309,10 @@ with tab_impact:
 
 # --- Access Mismatches ---
 with tab_mismatch:
-    ui.section_header("Where access and responsibility disagree, the Foundry exposes it")
-    st.caption("Access is a claim about responsibility. The system does not paper over the gap.")
+    ui.section_header(
+        "Access Mismatches",
+        "Where access and responsibility disagree, the Foundry exposes it — access is a "
+        "claim about responsibility, and the system does not paper over the gap.")
     ms = result["mismatches"]
     if not ms:
         st.success("No access mismatches detected.")
@@ -324,10 +330,12 @@ with tab_mismatch:
                 f"({o.get('title','')})  \n{m['detail']}"
             )
 
-# --- Monitoring Lenses ---
+# --- Monitoring Lenses (the mapmaker idea) ---
 with tab_lenses:
-    ui.section_header("Same objects, different maps")
-    st.caption("Customer · Sales · Product · Operations · Finance — each lens shows what that function owns.")
+    ui.section_header(
+        "Monitoring Lenses — everyone gets their own map",
+        "Data is the territory. One source of truth; each function travels it with a "
+        "different map drawn for what it needs to see.")
     lens_tabs = st.tabs([l.title() for l in result["lenses"]])
     for lt, (lens, ids) in zip(lens_tabs, result["lenses"].items()):
         with lt:
@@ -339,8 +347,10 @@ with tab_lenses:
 
 # --- Audit Trail ---
 with tab_audit:
-    ui.section_header("The invisible eye — every step, logged")
-    st.caption("Trusted outcomes: traceable, compliant, auditable.")
+    ui.section_header(
+        "Audit Trail",
+        "The invisible eye — every step logged. Trusted outcomes: traceable, "
+        "compliant, auditable.")
     st.markdown("**System-of-record events** (intake, actions, commits):")
     events = sor.events()
     if events:
