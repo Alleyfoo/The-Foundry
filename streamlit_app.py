@@ -27,8 +27,6 @@ import ui
 BASE_DIR = Path(__file__).resolve().parent
 
 BOX_ICON = {"create": "➕", "modify": "✏️", "plan": "📅", "control": "🛡️", "reference": "📄"}
-STATE_ICON = {"active": "🟢", "pending": "🟡", "blocked": "🔴", "draft": "⚪", "retired": "⚫"}
-COMMIT_ICON = {"proposal": "💡", "workflow": "⚙️", "truth": "🔒"}
 SOURCES = ["form", "email", "pdf", "excel", "chat", "api"]
 
 OBJ_COLS = ["object_id", "object_type", "title", "box", "stream",
@@ -102,9 +100,9 @@ spine_badges[5] = ui.badge(f"{len(result['committed'])} committed", ui.GREEN, "#
 ui.spine(spine_badges)
 st.caption("Users see tools. The system sees governed change.")
 
-(tab_scenario, tab_intake, tab_actions, tab_story, tab_boxes, tab_map, tab_coverage,
+(tab_scenario, tab_intake, tab_objects, tab_story, tab_boxes, tab_map, tab_coverage,
  tab_bottlenecks, tab_impact, tab_mismatch, tab_lenses, tab_audit) = st.tabs([
-    "▶ Scenario", "Intake", "Actions", "The Story", "The Five Boxes", "Governance Map",
+    "▶ Scenario", "Intake", "Objects", "The Story", "The Five Boxes", "Governance Map",
     "Coverage", "Bottlenecks & Aging", "Impact & Approvals", "Access Mismatches",
     "Monitoring Lenses", "Audit Trail",
 ])
@@ -173,39 +171,59 @@ with tab_intake:
         st.success(f"Created **{obj['object_id']}** → box `{obj['box']}`, "
                    f"stream `{obj['stream']}`, confidence {obj['confidence']}, state `draft`.")
 
-# --- Actions (drive the spine) ---
-with tab_actions:
+# --- Objects (the cockpit: click a classifier, inspect + drive it) ---
+with tab_objects:
     ui.section_header(
-        "Actions",
-        "Drive an object through the spine — approve and reject are Control actions, so "
-        "only a control-authorised role may do them.")
-    actor = st.selectbox("Acting as role", [r["role"] for r in roles["roles"]], index=2)
-    ids = [o["object_id"] for o in objects]
-    sel = st.selectbox(
-        "Object", ids,
-        format_func=lambda i: (f"{i} — {obj_by_id[i]['title'][:50]} ({obj_by_id[i]['state']})"
-                               if i in obj_by_id else i),
-    )
-    obj = obj_by_id.get(sel)
-    if obj:
-        st.markdown(
-            f"{STATE_ICON.get(obj['state'],'')} **{obj['state']}** · "
-            f"{COMMIT_ICON.get(obj['commitment'],'')} {obj['commitment']} · "
-            f"box `{obj['box']}` · owner **{obj['owner_team']}** · "
-            f"approver **{obj.get('approver_role') or '—'}** · "
-            f"SoR `{obj.get('system_of_record_ref') or '—'}`"
-        )
-        acts = available_actions(obj)
-        if not acts:
-            st.info("No actions available — this object is in a terminal state.")
+        "Object Explorer",
+        "Every type is a classifier. Filter or search, then click a row to inspect the "
+        "object's mapping, state, and connections — and drive it through the spine.")
+
+    f1, f2, f3, f4 = st.columns(4)
+    box_f = f1.selectbox("Box", ["All", "create", "modify", "plan", "control", "reference"])
+    stream_f = f2.selectbox("Stream", ["All", "customer", "item", "supplier"])
+    state_f = f3.selectbox("Status", ["All", "active", "pending", "blocked", "draft", "retired"])
+    commit_f = f4.selectbox("Commitment", ["All", "proposal", "workflow", "truth"])
+    search = st.text_input("Search", placeholder="title or object id")
+
+    filtered = [
+        o for o in objects
+        if (box_f == "All" or o["box"] == box_f)
+        and (stream_f == "All" or o["stream"] == stream_f)
+        and (state_f == "All" or o["state"] == state_f)
+        and (commit_f == "All" or o["commitment"] == commit_f)
+        and (not search or search.lower() in (o["title"] + o["object_id"]).lower())
+    ]
+
+    left, right = st.columns([0.56, 0.44])
+    with left:
+        st.caption(f"{len(filtered)} objects — click a row to inspect")
+        df = to_df(filtered, ["object_id", "object_type", "box", "state",
+                              "commitment", "owner_team", "aging_days"])
+        event = st.dataframe(df, width="stretch", height=460, hide_index=True,
+                             on_select="rerun", selection_mode="single-row", key="obj_tbl")
+        if event.selection.rows:
+            st.session_state["selected_id"] = filtered[event.selection.rows[0]]["object_id"]
+
+    with right:
+        sid = st.session_state.get("selected_id")
+        if sid and sid in obj_by_id:
+            ui.object_detail(obj_by_id[sid], obj_by_id)
+            obj = obj_by_id[sid]
+            actor = st.selectbox("Acting as role", [r["role"] for r in roles["roles"]],
+                                 index=2, key="det_actor")
+            acts = available_actions(obj)
+            if acts:
+                cols = st.columns(min(len(acts), 4))
+                for i, act in enumerate(acts):
+                    if cols[i % 4].button(act, key=f"det_{act}", width="stretch"):
+                        r = apply_action(sor, sid, act, actor, access)
+                        refresh(sor)
+                        (st.success if r["ok"] else st.error)(r["message"])
+                        st.rerun()
+            else:
+                st.caption("Terminal state — no actions available.")
         else:
-            cols = st.columns(len(acts))
-            for col, act in zip(cols, acts):
-                if col.button(act, key=f"act_{act}", width="stretch"):
-                    r = apply_action(sor, sel, act, actor, access)
-                    refresh(sor)
-                    (st.success if r["ok"] else st.error)(r["message"])
-                    st.rerun()
+            st.info("⬅ Select an object to open its detail panel.")
 
 # --- The Story (org chart through access) ---
 with tab_story:

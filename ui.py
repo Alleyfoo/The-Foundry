@@ -143,6 +143,20 @@ h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800
 .fdy-covcell .n { font-weight:800; font-size:1.15rem; }
 .fdy-covcell .own { color:#5b6b7f; font-size:.6rem; margin-top:3px; line-height:1.15; }
 .cov-flag { font-family:ui-monospace,monospace; font-size:.62rem; }
+
+/* Object detail panel */
+.fdy-det { background:#fff; border:1px solid #e2e9f3; border-radius:14px; padding:18px; }
+.fdy-det h2 { margin:.15rem 0 .3rem; font-size:1.4rem; }
+.fdy-detgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
+.fdy-detbox { background:#f6f8fb; border:1px solid #eef2f7; border-radius:9px; padding:7px 10px; }
+.fdy-detbox .k { color:#7a899c; font-size:.6rem; text-transform:uppercase; letter-spacing:.03em; }
+.fdy-detbox .v { color:#0f2a4d; font-weight:700; font-size:.88rem; }
+.fdy-detsec { font-weight:800; color:#0f2a4d; margin:15px 0 6px; font-size:.78rem;
+              text-transform:uppercase; letter-spacing:.04em; }
+.fdy-detrow { display:flex; justify-content:space-between; gap:12px; padding:6px 0;
+              border-bottom:1px solid #f0f3f8; font-size:.84rem; }
+.fdy-detrow .lbl { color:#7a899c; flex:none; }
+.fdy-detrow .val { color:#0f2a4d; text-align:right; }
 </style>
         """,
         unsafe_allow_html=True,
@@ -253,6 +267,69 @@ def stream_flow(stream: str, label: str, objects: list[dict[str, Any]]) -> None:
             parts.append(f'<span class="fdy-flowarrow" style="color:{col}">{arrow}</span>')
     parts.append('</div>')
     st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+# --- Object detail panel ---
+_COMMIT_TINT = {"proposal": ("#fdeede", ORANGE), "workflow": ("#eef5fd", BLUE),
+                "truth": ("#e8f7ee", GREEN)}
+
+
+def object_detail(obj: dict[str, Any], obj_by_id: dict[str, dict[str, Any]]) -> None:
+    """The cockpit detail panel for one object — its mapping, state, and connections."""
+    box = obj["box"]
+    bc = BOX_COLOR.get(box, NAVY)
+    sc = STATE_COLOR.get(obj["state"], MUTED)
+    cbg, cfg = _COMMIT_TINT.get(obj["commitment"], ("#eef2f7", MUTED))
+
+    outs = [obj_by_id[d]["title"] for d in obj.get("downstream", []) if d in obj_by_id]
+    ins = obj.get("evidence", [])
+    sor_ref = obj.get("system_of_record_ref")
+    path = (f"Locked as truth in SAP ({sor_ref})." if sor_ref
+            else "Will lock as truth in SAP once committed.")
+
+    def row(lbl, val):
+        return f'<div class="fdy-detrow"><span class="lbl">{_e(lbl)}</span><span class="val">{val}</span></div>'
+
+    def cell(k, v):
+        return f'<div class="fdy-detbox"><div class="k">{_e(k)}</div><div class="v">{_e(v)}</div></div>'
+
+    h = ['<div class="fdy-det">']
+    h.append(
+        f'<div style="display:flex;justify-content:space-between;align-items:center">'
+        f'{badge(obj["object_type"], MUTED, "#eef2f7")}'
+        f'{badge(obj["commitment"], cfg, cbg)}</div>'
+    )
+    h.append(f'<h2>{_e(obj["title"])}</h2>')
+    h.append(
+        f'<div style="margin-bottom:4px"><span style="color:{sc};font-weight:700">'
+        f'{_e(STATE_LABEL.get(obj["state"], obj["state"]))}</span> · '
+        f'Owner <b>{_e(obj["owner_team"])}</b> · <span class="fdy-id">{_e(obj["object_id"])}</span></div>'
+    )
+    h.append('<div class="fdy-detsec">Ontology mapping</div>')
+    h.append(
+        f'<div class="fdy-detbox">User sees <b>{_e(obj["object_type"])}</b> &nbsp;→&nbsp; '
+        f'system sees box {badge(box, bc, "#eef2f7")}</div>'
+    )
+    h.append('<div class="fdy-detsec">Operational state</div><div class="fdy-detgrid">')
+    h.append(cell("Stream", obj["stream"]))
+    h.append(cell("World", obj["world"]))
+    h.append(cell("Created", obj.get("created_at", "—")))
+    h.append(cell("Last update", obj.get("updated_at", "—")))
+    h.append(cell("Time in stage", f'{obj.get("aging_days", 0)} days'))
+    h.append(cell("Confidence", obj.get("confidence", "—")))
+    h.append(cell("Approver", obj.get("approver_role") or "—"))
+    h.append(cell("Commitment", obj["commitment"]))
+    h.append('</div>')
+    h.append('<div class="fdy-detsec">Inputs &amp; outputs</div>')
+    h.append(row("Inputs (evidence)", _e(", ".join(ins)) if ins else "—"))
+    h.append(row("Outputs (downstream)", _e(", ".join(outs)) if outs else "<i>Unreached</i>"))
+    h.append('<div class="fdy-detsec">Lifecycle &amp; afterlife</div>')
+    h.append(
+        f'<div class="fdy-detbox">Path: {_e(path)}<br>'
+        f'Lifecycle: <b>{_e(obj.get("lifecycle", "none"))}</b></div>'
+    )
+    h.append('</div>')
+    st.markdown("".join(h), unsafe_allow_html=True)
 
 
 # --- Coverage grid ---
