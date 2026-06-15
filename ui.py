@@ -153,7 +153,7 @@ h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800
 .fdy-flabel { font-size:.66rem; font-weight:800; color:#5b6b7f; letter-spacing:.06em; margin:12px 0 4px; }
 .fdy-flow { display:flex; align-items:stretch; gap:1px; overflow-x:auto; padding:4px 2px 10px; }
 .fdy-fcard { background:#fff; border:1px solid #e2e9f3; border-top:3px solid var(--sc); border-radius:10px;
-             padding:10px 12px; min-width:172px; flex:none; }
+             padding:9px 11px; width:158px; flex:none; overflow:hidden; }
 .fdy-fcard.blocked { border:1px solid #e5484d; box-shadow:0 0 0 2px #fde8e8; }
 .fc-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
 .fc-type { font-weight:800; color:#0f2a4d; font-size:.86rem; }
