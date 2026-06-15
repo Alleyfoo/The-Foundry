@@ -102,10 +102,10 @@ spine_badges[5] = ui.badge(f"{len(result['committed'])} committed", ui.GREEN, "#
 ui.spine(spine_badges)
 st.caption("Users see tools. The system sees governed change.")
 
-(tab_scenario, tab_intake, tab_actions, tab_story, tab_boxes, tab_map,
+(tab_scenario, tab_intake, tab_actions, tab_story, tab_boxes, tab_map, tab_coverage,
  tab_bottlenecks, tab_impact, tab_mismatch, tab_lenses, tab_audit) = st.tabs([
     "▶ Scenario", "Intake", "Actions", "The Story", "The Five Boxes", "Governance Map",
-    "Bottlenecks & Aging", "Impact & Approvals", "Access Mismatches",
+    "Coverage", "Bottlenecks & Aging", "Impact & Approvals", "Access Mismatches",
     "Monitoring Lenses", "Audit Trail",
 ])
 
@@ -248,6 +248,26 @@ with tab_map:
             to_df(afterlife, ["object_id", "title", "lifecycle", "state", "owner_team"]),
             width="stretch", height=min(40 + 35 * len(afterlife), 240),
         )
+
+# --- Coverage (which areas are governed, and how well) ---
+with tab_coverage:
+    ui.section_header("Governance Coverage",
+                      "Which areas are covered by which functions — and where the "
+                      "checks and balances have gaps.")
+    cov = result["coverage"]
+    g, a, rd = cov["summary"]["green"], cov["summary"]["amber"], cov["summary"]["red"]
+    st.markdown(
+        f'<span class="fdy-badge" style="color:{ui.GREEN};background:#e8f7ee">{g} covered</span> '
+        f'<span class="fdy-badge" style="color:{ui.ORANGE};background:#fdeede">{a} weak</span> '
+        f'<span class="fdy-badge" style="color:{ui.RED};background:#fde8e8">{rd} gap</span>'
+        '&nbsp;&nbsp;<span style="color:#7a899c;font-size:.8rem">'
+        'green = owned + approved, no mismatch · amber = weak (missing approver or stuck) · '
+        'red = a segregation-of-duties gap</span>',
+        unsafe_allow_html=True,
+    )
+    ui.coverage_grid(cov)
+    st.markdown("**How each function covers its areas:**")
+    ui.coverage_functions(cov["by_function"])
 
 # --- Bottlenecks & Aging ---
 with tab_bottlenecks:

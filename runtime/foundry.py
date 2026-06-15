@@ -185,6 +185,13 @@ class Foundry:
         self.shadow.observe_task_end("foundry", "access_check", success=len(mismatches) == 0,
                                      mismatch_count=len(mismatches))
 
+        # 6b. Governance coverage — which areas are covered by functions, and how well
+        self.shadow.observe_task_start("foundry", "coverage")
+        coverage = self._coverage(objects, truth_touching, mismatches)
+        self.store.write_json(ctx.run_id, "coverage.json", coverage)
+        self.shadow.observe_task_end("foundry", "coverage", success=coverage["summary"]["red"] == 0,
+                                     gaps=coverage["summary"]["red"])
+
         # 7. Monitoring lenses — same objects, different maps
         self.shadow.observe_task_start("foundry", "lenses")
         lenses: dict[str, list[str]] = {l: [] for l in roles.get("monitoring_lenses", [])}
@@ -217,6 +224,7 @@ class Foundry:
             "bottlenecks": bottlenecks,
             "impact": impact,
             "approvals": approvals,
+            "coverage": coverage,
             "committed": committed,
             "in_flight": in_flight,
             "mismatches": mismatches,
@@ -274,6 +282,70 @@ class Foundry:
                 "statement": " ".join(parts),
             })
         return out
+
+    def _coverage(
+        self,
+        objects: list[dict[str, Any]],
+        truth_touching: set[str],
+        mismatches: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Which governed areas (stream x box) are covered by functions, and how well.
+
+        green  = owned, approved where needed, no mismatch
+        amber  = owned but weak (missing approver, or work stuck/aging)
+        red    = an access mismatch (a segregation-of-duties gap)
+        empty  = no objects here yet
+        """
+        streams = ["customer", "item", "supplier"]
+        boxes = ["create", "modify", "plan", "control", "reference"]
+        mm_ids = {m["object_id"] for m in mismatches}
+
+        matrix = []
+        for s in streams:
+            for b in boxes:
+                cell = [o for o in objects if o["stream"] == s and o["box"] == b]
+                if not cell:
+                    matrix.append({"stream": s, "box": b, "count": 0, "status": "empty",
+                                   "owners": [], "mismatch_count": 0, "missing_approver": 0})
+                    continue
+                owners = sorted({o["owner_team"] for o in cell})
+                mismatch_count = sum(1 for o in cell if o["object_id"] in mm_ids)
+                missing_approver = sum(
+                    1 for o in cell
+                    if b in truth_touching and not o.get("approver_role") and o.get("commitment") != "truth"
+                )
+                stuck = sum(1 for o in cell if o.get("state") in ("blocked", "pending"))
+                if mismatch_count:
+                    status = "red"
+                elif missing_approver or stuck:
+                    status = "amber"
+                else:
+                    status = "green"
+                matrix.append({"stream": s, "box": b, "count": len(cell), "status": status,
+                               "owners": owners, "mismatch_count": mismatch_count,
+                               "missing_approver": missing_approver})
+
+        # How each function covers the areas it owns.
+        funcs: dict[str, dict[str, Any]] = {}
+        for o in objects:
+            d = funcs.setdefault(o["owner_team"],
+                                 {"owner_team": o["owner_team"], "objects": 0,
+                                  "boxes": set(), "mismatches": 0})
+            d["objects"] += 1
+            d["boxes"].add(o["box"])
+            if o["object_id"] in mm_ids:
+                d["mismatches"] += 1
+        by_function = []
+        for d in funcs.values():
+            d["boxes"] = sorted(d["boxes"])
+            d["status"] = "red" if d["mismatches"] else "green"
+            by_function.append(d)
+        by_function.sort(key=lambda x: (-x["mismatches"], -x["objects"]))
+
+        summary = {st: sum(1 for c in matrix if c["status"] == st)
+                   for st in ("green", "amber", "red", "empty")}
+        return {"matrix": matrix, "by_function": by_function, "summary": summary,
+                "streams": streams, "boxes": boxes}
 
     def _route_approval(
         self,

@@ -132,6 +132,17 @@ h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800
 .fdy-bn .meta { color:#5b6b7f; font-size:.82rem; }
 .fdy-agewrap { height:8px; background:#eef2f7; border-radius:5px; margin:10px 0 6px; overflow:hidden; }
 .fdy-agebar { height:8px; border-radius:5px; background:linear-gradient(90deg,#f1a73b,var(--bnc)); }
+
+/* Coverage grid */
+.fdy-cov { display:flex; flex-direction:column; gap:6px; margin:8px 0 4px; }
+.fdy-covrow { display:flex; gap:6px; align-items:stretch; }
+.fdy-covlabel { width:96px; flex:none; font-weight:800; color:#0f2a4d; display:flex; align-items:center; font-size:.85rem; }
+.fdy-covhead { flex:1; text-align:center; font-weight:700; color:#5b6b7f; font-size:.66rem; text-transform:uppercase; letter-spacing:.03em; }
+.fdy-covcell { flex:1; min-height:60px; border:1px solid; border-radius:9px; padding:7px 6px; text-align:center;
+               display:flex; flex-direction:column; justify-content:center; }
+.fdy-covcell .n { font-weight:800; font-size:1.15rem; }
+.fdy-covcell .own { color:#5b6b7f; font-size:.6rem; margin-top:3px; line-height:1.15; }
+.cov-flag { font-family:ui-monospace,monospace; font-size:.62rem; }
 </style>
         """,
         unsafe_allow_html=True,
@@ -242,6 +253,54 @@ def stream_flow(stream: str, label: str, objects: list[dict[str, Any]]) -> None:
             parts.append(f'<span class="fdy-flowarrow" style="color:{col}">{arrow}</span>')
     parts.append('</div>')
     st.markdown("".join(parts), unsafe_allow_html=True)
+
+
+# --- Coverage grid ---
+_COV_COLOR = {"green": ("#e8f7ee", GREEN), "amber": ("#fdeede", ORANGE),
+              "red": ("#fde8e8", RED), "empty": ("#f6f8fb", "#dbe3ee")}
+
+
+def coverage_grid(coverage: dict[str, Any]) -> None:
+    boxes = coverage["boxes"]
+    cells = {(c["stream"], c["box"]): c for c in coverage["matrix"]}
+    h = ['<div class="fdy-cov">', '<div class="fdy-covrow"><div class="fdy-covlabel"></div>']
+    for b in boxes:
+        h.append(f'<div class="fdy-covhead">{_e(b)}</div>')
+    h.append('</div>')
+    for s in coverage["streams"]:
+        h.append(f'<div class="fdy-covrow"><div class="fdy-covlabel">{_e(s)}</div>')
+        for b in boxes:
+            c = cells[(s, b)]
+            bg, fg = _COV_COLOR[c["status"]]
+            if c["status"] == "empty":
+                inner = '<div style="color:#cbd5e1">—</div>'
+            else:
+                flag = (f' <span class="cov-flag" style="color:{fg}">!{c["mismatch_count"]}</span>'
+                        if c["mismatch_count"] else '')
+                inner = (f'<div class="n" style="color:{fg}">{c["count"]}{flag}</div>'
+                         f'<div class="own">{_e(", ".join(c["owners"]))[:24]}</div>')
+            h.append(f'<div class="fdy-covcell" style="background:{bg};border-color:{fg}">{inner}</div>')
+        h.append('</div>')
+    h.append('</div>')
+    st.markdown("".join(h), unsafe_allow_html=True)
+
+
+def coverage_functions(by_function: list[dict[str, Any]]) -> None:
+    """How each function covers the boxes it owns."""
+    for f in by_function:
+        col = RED if f["mismatches"] else GREEN
+        flag = (f'<span style="color:{RED};font-weight:700">⚠ {f["mismatches"]} mismatch</span>'
+                if f["mismatches"] else f'<span style="color:{GREEN}">✓ clean</span>')
+        chips = " ".join(
+            f'<span class="fdy-badge" style="color:{BOX_COLOR.get(b, NAVY)};background:#eef2f7">{_e(b)}</span>'
+            for b in f["boxes"])
+        st.markdown(
+            f'<div class="fdy-role" style="border-left:4px solid {col}">'
+            f'<div class="nm">{_e(f["owner_team"])}</div>'
+            f'<div style="flex:1">{chips}</div>'
+            f'<div class="resp">{f["objects"]} objects · {flag}</div></div>',
+            unsafe_allow_html=True,
+        )
 
 
 # --- Bottleneck cards ---------------------------------------------------------
