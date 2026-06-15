@@ -3,6 +3,13 @@
 Two plans: what is left to build (programside), and how it should look (visual).
 Status as of 2026-06-14.
 
+> **Current status:** P1, P2, the visual reskin, a guided Scenario, and a Governance
+> Coverage view are all done. The app now tells the three founding ideas as three
+> acts — **Map** (monitoring lenses), **Coverage** (the governance grid), **Flow**
+> (bottlenecks / scenario). Target audience: large, audited, listed companies (the
+> access mismatches are segregation-of-duties checks). It is a concept demo, not a
+> product. Remaining: optional P3 (/tests).
+
 ---
 
 ## Where we are (baseline)
