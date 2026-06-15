@@ -39,6 +39,7 @@ LENS_BY_TEAM = {
     "SAP Owner": "operations",
     "Records Owner": "operations",
     "Pricing": "finance",
+    "Finance": "finance",
     "Suppliers": "product",
     "Manager": "operations",
 }

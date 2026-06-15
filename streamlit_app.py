@@ -117,7 +117,7 @@ DOMAINS = [
     ("Sales Domain", "👥", ["Sales"]),
     ("Product & Ops Domain", "📦", ["Product Manager", "Product Data", "Product Owner",
                                     "Operations", "Suppliers"]),
-    ("Governance Domain", "🛡️", ["Pricing", "Manager", "SAP Owner", "Records Owner"]),
+    ("Governance Domain", "🛡️", ["Pricing", "Finance", "Manager", "SAP Owner", "Records Owner"]),
 ]
 
 # --- Scenario (guided narrative walkthrough) ---
@@ -271,6 +271,7 @@ FLOWS = [
     ("1. Customer Signal Flow", ["OBJ-C001", "OBJ-C002", "OBJ-C003", "OBJ-C004", "OBJ-C005"]),
     ("2. Item Creation Flow", ["OBJ-I001", "OBJ-I002", "OBJ-I003", "OBJ-I004", "OBJ-I005"]),
     ("3. Supplier / Reference Flow", ["OBJ-S001", "OBJ-S002", "OBJ-S003", "OBJ-S004"]),
+    ("4. Price Flow", ["OBJ-P001", "OBJ-P002", "OBJ-P003", "OBJ-P004"]),
 ]
 with tab_map:
     ui.section_header("Object Governance Map",

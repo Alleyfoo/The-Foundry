@@ -18,7 +18,7 @@ def _objects():
 
 def test_seed_objects_all_valid():
     report = validate_dataset(_objects(), _schema())
-    assert report.total_records == 21
+    assert report.total_records == 24
     assert report.is_valid
     assert report.violation_count == 0
 

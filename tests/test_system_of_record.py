@@ -15,7 +15,7 @@ def _seed():
 def test_seed_is_idempotent(tmp_path):
     sor = SystemOfRecord(str(tmp_path / "f.db"))
     assert sor.seed_if_empty(_seed()) is True
-    assert len(sor.all_objects()) == 21
+    assert len(sor.all_objects()) == 24
     assert sor.seed_if_empty(_seed()) is False
 
 
