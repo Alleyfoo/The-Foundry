@@ -86,7 +86,6 @@ These are detected for real by the pipeline, not just described — see
     object_schema.json   — the governed object (world, box, owner, state, commitment, lifecycle)
     boxes.json           — the five governed action families
     roles.json           — org-chart-through-access: role gravity over the boxes
-    definition_of_definition.json — the meta-schema (the five definition questions)
 /data
     objects.json         — sample in-flight objects across customer / item / supplier streams
 /runtime
@@ -121,6 +120,17 @@ Ollama or cloud LLM is needed.
 2. At [share.streamlit.io](https://share.streamlit.io), point an app at this repo,
    branch `master`, main file `streamlit_app.py`.
 3. `requirements.txt` is picked up automatically; no secrets required.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+23 tests cover schema validation, the system of record, the actions/state-machine
+(including the access guard), and the pipeline (bottlenecks, mismatches, coverage,
+lenses), plus an AppTest render smoke test.
 
 ## License
 

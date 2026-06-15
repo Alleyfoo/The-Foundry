@@ -60,15 +60,16 @@ Ordered by how much each makes the demo *true*, not just prettier.
 - [x] **6. Lifecycle / disposition.** `actions.py` — mark_eol / archive / scrap /
       link_replacement. The Governance Map shows the lifecycle/afterlife.
 
-### P3 — Hardening for public
+### P3 — Hardening for public  ✅ DONE
 
-- [ ] **7. `/tests`.** Schema validation, pipeline outputs, mismatch detection.
-      Verification is a manual AppTest run today.
-- [ ] **8. Housekeeping.** Decide the fate of the orphaned
-      `definition_of_definition.json`; ~~object-id generation for intake objects~~
-      (done in P1). Removed the stale `agent.md`.
+- [x] **7. `/tests`.** pytest suite in `/tests` — schema validation, system of record,
+      actions/state-machine/access-guard, and the pipeline (bottlenecks, mismatches,
+      coverage, lenses) + an AppTest render smoke test. 23 tests.
+      Run: `pip install -r requirements-dev.txt && pytest`.
+- [x] **8. Housekeeping.** Removed the orphaned `definition_of_definition.json` (no
+      code used it) and the stale `agent.md`; object-id generation done in P1.
 
-**Recommended sequence:** P1 → P2 done. P3 remaining, or pause for the design pass.
+**Status:** P1, P2, P3, the reskin, the Scenario, and Coverage are all done.
 
 ---
 

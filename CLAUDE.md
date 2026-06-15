@@ -86,7 +86,6 @@ permission. Reference cuts across every level.
     object_schema.json            — the governed object (source of truth)
     boxes.json                    — the five action families
     roles.json                    — role gravity + box access (the access model)
-    definition_of_definition.json — meta-schema: the five definition questions
 /data
     objects.json                  — sample in-flight objects across the three streams
 /runtime
@@ -131,8 +130,7 @@ Run: `streamlit run streamlit_app.py`. Deploy: Streamlit Community Cloud, main f
 - Local first. No cloud dependency for core function. No Ollama needed.
 - The shadow agent logs to JSONL always, no exceptions.
 - Verify UI changes with `AppTest` (it executes the render path; a headless boot does not).
-- Possible next steps: a `/tests` dir; a live "drop a raw input, watch it get
-  sorted into a box" intake demo; decide the fate of `definition_of_definition.json`.
+- Tests live in `/tests` (pytest). Run: `pip install -r requirements-dev.txt && pytest`.
 
 ---
 

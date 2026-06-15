@@ -164,10 +164,10 @@ def validate_dataset(
 
         for v in errors:
             v["record_index"] = i
-            v["product_code"] = record.get("product_code", f"record_{i}")
+            v["record_id"] = record.get("object_id", record.get("product_code", f"record_{i}"))
         for w in warnings:
             w["record_index"] = i
-            w["product_code"] = record.get("product_code", f"record_{i}")
+            w["record_id"] = record.get("object_id", record.get("product_code", f"record_{i}"))
 
         all_violations.extend(errors)
         all_warnings.extend(warnings)
