@@ -120,7 +120,8 @@ with tab_scenario:
     )
     chain_ids = ["OBJ-I001", "OBJ-I002", "OBJ-I003", "OBJ-I004", "OBJ-I005"]
     item_chain = [obj_by_id[i] for i in chain_ids if i in obj_by_id]
-    ui.stream_flow("item", "The change: new variant → SAP", item_chain)
+    ui.flow_legend()
+    ui.flow_row("The change: new variant → SAP", item_chain)
 
     sap_master = obj_by_id.get("OBJ-I005", {})
     if sap_master.get("commitment") == "truth":
@@ -252,16 +253,33 @@ with tab_boxes:
     st.markdown("**Triage** — how sure the Foundry is about each object:")
     st.dataframe(to_df(result["triage"]), width="stretch", height=300)
 
-# --- Governance Map (streams) ---
+# --- Governance Map (the signal / flow view) ---
+FLOWS = [
+    ("1. Customer Signal Flow", ["OBJ-C001", "OBJ-C002", "OBJ-C003", "OBJ-C004", "OBJ-C005"]),
+    ("2. Item Creation Flow", ["OBJ-I001", "OBJ-I002", "OBJ-I003", "OBJ-I004", "OBJ-I005"]),
+    ("3. Supplier / Reference Flow", ["OBJ-S001", "OBJ-S002", "OBJ-S003", "OBJ-S004"]),
+]
 with tab_map:
     ui.section_header("Object Governance Map",
-                      "Who owns reality, what is flowing, and where it gets stuck.")
-    labels = {"customer": "1. Customer Stream", "item": "2. Item Stream",
-              "supplier": "3. Supplier / Reference Stream"}
-    for stream in ["customer", "item", "supplier"]:
-        in_stream = [o for o in objects if o["stream"] == stream]
-        if in_stream:
-            ui.stream_flow(stream, labels[stream], in_stream)
+                      "Who owns reality, what is flowing, and where it gets stuck — "
+                      "click a node to inspect it.")
+    ui.flow_legend()
+    for title, ids in FLOWS:
+        nodes = [obj_by_id[i] for i in ids if i in obj_by_id]
+        if not nodes:
+            continue
+        ui.flow_row(title, nodes)
+        cols = st.columns(len(nodes))
+        for c, o in zip(cols, nodes):
+            if c.button(f"🔍 {o['object_id']}", key=f"flow_{o['object_id']}", width="stretch"):
+                st.session_state["selected_id"] = o["object_id"]
+                st.rerun()
+
+    sid = st.session_state.get("selected_id")
+    if sid and sid in obj_by_id:
+        st.divider()
+        ui.object_detail(obj_by_id[sid], obj_by_id)
+
     afterlife = [o for o in objects if o.get("lifecycle", "none") != "none"]
     if afterlife:
         st.markdown("#### Lifecycle / afterlife")

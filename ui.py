@@ -157,6 +157,21 @@ h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800
               border-bottom:1px solid #f0f3f8; font-size:.84rem; }
 .fdy-detrow .lbl { color:#7a899c; flex:none; }
 .fdy-detrow .val { color:#0f2a4d; text-align:right; }
+
+/* Flow view */
+.fdy-flegend { display:inline-flex; flex-wrap:wrap; gap:22px; background:#f6f8fb; border:1px solid #eef2f7;
+               border-radius:12px; padding:11px 18px; margin:4px 0 14px; font-size:.76rem; color:#5b6b7f; }
+.fdy-flegend b { color:#0f2a4d; }
+.fdy-flabel { font-size:.66rem; font-weight:800; color:#5b6b7f; letter-spacing:.06em; margin:12px 0 4px; }
+.fdy-flow { display:flex; align-items:stretch; gap:1px; overflow-x:auto; padding:4px 2px 10px; }
+.fdy-fcard { background:#fff; border:1px solid #e2e9f3; border-top:3px solid var(--sc); border-radius:10px;
+             padding:10px 12px; min-width:172px; flex:none; }
+.fdy-fcard.blocked { border:1px solid #e5484d; box-shadow:0 0 0 2px #fde8e8; }
+.fc-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.fc-type { font-weight:800; color:#0f2a4d; font-size:.86rem; }
+.fc-title { color:#5b6b7f; font-size:.76rem; margin:2px 0 6px; }
+.fc-rows > div { display:flex; justify-content:space-between; padding:2px 0; font-size:.72rem; color:#7a899c; }
+.fc-edge { display:flex; align-items:center; padding:0 3px; font-size:1.2rem; flex:none; }
 </style>
         """,
         unsafe_allow_html=True,
@@ -235,38 +250,6 @@ def role_ladder(roles: dict[str, Any]) -> None:
             f'<div class="resp">{_e(r["responsibility"])}</div></div>',
             unsafe_allow_html=True,
         )
-
-
-# --- Stream flow --------------------------------------------------------------
-_STREAM_THEME = {
-    "customer": ("#eef5fd", "#d9e7f8", BLUE),
-    "item": ("#fdf2ea", "#f6dcc6", ORANGE),
-    "supplier": ("#eafaf6", "#cdebe0", TEAL),
-}
-
-
-def stream_flow(stream: str, label: str, objects: list[dict[str, Any]]) -> None:
-    sb, sbd, sc = _STREAM_THEME.get(stream, ("#f4f7fb", "#e2e9f3", NAVY))
-    nodes = sorted(objects, key=lambda o: o["object_id"])
-    parts = [f'<div class="fdy-stream" style="--sb:{sb};--sbd:{sbd};--sc:{sc}">'
-             f'<div class="slab">{_e(label)}</div>']
-    for i, o in enumerate(nodes):
-        nc = STATE_COLOR.get(o["state"], MUTED)
-        parts.append(
-            f'<div class="fdy-node" style="--nc:{nc}">'
-            f'<span class="tag">{_e(o["owner_team"])}</span> '
-            f'<span class="fdy-id">{_e(o["object_id"])}</span>'
-            f'<div class="nt">{_e(o["object_type"])}</div>'
-            f'<div class="ns">{_e(o["title"][:30])}</div></div>'
-        )
-        if i < len(nodes) - 1:
-            nxt = nodes[i + 1]
-            col = STATE_COLOR.get(nxt["state"], MUTED)
-            dashed = nxt["object_type"] == "Signal" or nxt["box"] == "plan"
-            arrow = "⇢" if dashed else "→"
-            parts.append(f'<span class="fdy-flowarrow" style="color:{col}">{arrow}</span>')
-    parts.append('</div>')
-    st.markdown("".join(parts), unsafe_allow_html=True)
 
 
 # --- Object detail panel ---
@@ -378,6 +361,58 @@ def coverage_functions(by_function: list[dict[str, Any]]) -> None:
             f'<div class="resp">{f["objects"]} objects · {flag}</div></div>',
             unsafe_allow_html=True,
         )
+
+
+# --- Flow view (the signal / governance map) ---
+def flow_legend() -> None:
+    st.markdown(
+        '<div class="fdy-flegend">'
+        f'<span><b>Status:</b></span>'
+        f'<span>● <span style="color:{GREEN}">flowing</span></span>'
+        f'<span>● <span style="color:{AMBER}">pending</span></span>'
+        f'<span>● <span style="color:{RED}">blocked</span></span>'
+        f'<span>&nbsp;|&nbsp;<b>Edges:</b></span>'
+        f'<span style="color:{GREEN}">⇢ signal</span>'
+        f'<span style="color:#94a3b8">→ workflow</span>'
+        f'<span style="color:#cbd5e1">→ unreached</span>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _edge_type(cur: dict[str, Any], nxt: dict[str, Any]) -> str:
+    if cur.get("state") == "blocked" or nxt.get("state") in ("draft", "retired"):
+        return "unreached"
+    if nxt.get("object_type") == "Signal" or nxt.get("box") == "plan" or cur.get("object_type") == "Signal":
+        return "signal"
+    return "workflow"
+
+
+def flow_row(title: str, nodes: list[dict[str, Any]]) -> None:
+    """A named flow: rich object cards connected by status-typed edges."""
+    edge_col = {"signal": GREEN, "workflow": "#94a3b8", "unreached": "#cbd5e1"}
+    edge_glyph = {"signal": "⇢", "workflow": "→", "unreached": "→"}
+    h = [f'<div class="fdy-flabel">{_e(title.upper())}</div>', '<div class="fdy-flow">']
+    for i, o in enumerate(nodes):
+        sc = STATE_COLOR.get(o["state"], MUTED)
+        cbg, cfg = _COMMIT_TINT.get(o["commitment"], ("#eef2f7", MUTED))
+        blocked = "blocked" if o["state"] == "blocked" else ""
+        h.append(
+            f'<div class="fdy-fcard {blocked}" style="--sc:{sc}">'
+            f'<div class="fc-top"><span class="fc-type">{_e(o["object_type"])}</span>'
+            f'{badge(o["commitment"], cfg, cbg)}</div>'
+            f'<div class="fc-title">{_e(o["title"][:26])}</div>'
+            f'<div class="fc-rows">'
+            f'<div><span>Owner</span><b style="color:#0f2a4d">{_e(o["owner_team"])}</b></div>'
+            f'<div><span>Status</span><b style="color:{sc}">{_e(STATE_LABEL.get(o["state"], o["state"]))}</b></div>'
+            f'<div><span>Box</span>{badge(o["box"], BOX_COLOR.get(o["box"], NAVY), "#eef2f7")}</div>'
+            f'</div></div>'
+        )
+        if i < len(nodes) - 1:
+            et = _edge_type(o, nodes[i + 1])
+            h.append(f'<span class="fc-edge" style="color:{edge_col[et]}">{edge_glyph[et]}</span>')
+    h.append('</div>')
+    st.markdown("".join(h), unsafe_allow_html=True)
 
 
 # --- Bottleneck cards ---------------------------------------------------------
