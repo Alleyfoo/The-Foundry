@@ -100,12 +100,17 @@ spine_badges[5] = ui.badge(f"{len(result['committed'])} committed", ui.GREEN, "#
 ui.spine(spine_badges)
 st.caption("Users see tools. The system sees governed change.")
 
-(tab_scenario, tab_intake, tab_objects, tab_story, tab_boxes, tab_map, tab_ownership,
- tab_coverage, tab_bottlenecks, tab_impact, tab_mismatch, tab_lenses, tab_audit) = st.tabs([
-    "▶ Scenario", "Intake", "Objects", "The Story", "The Five Boxes", "Governance Map",
-    "Ownership", "Coverage", "Bottlenecks & Aging", "Impact & Approvals",
-    "Access Mismatches", "Monitoring Lenses", "Audit Trail",
+(tab_scenario, tab_objects, tab_map, tab_ownership,
+ tab_coverage, tab_risk, tab_model) = st.tabs([
+    "▶ Scenario", "Objects", "Governance Map", "Ownership",
+    "Coverage", "Bottlenecks & Risk", "Model & Audit",
 ])
+# Consolidated layout: several sub-views render into shared tabs. Entering a tab
+# context more than once appends content, so the old per-view blocks still work.
+tab_intake = tab_objects
+tab_mismatch = tab_coverage
+tab_bottlenecks = tab_impact = tab_risk
+tab_story = tab_boxes = tab_lenses = tab_audit = tab_model
 
 # Domains group the owning teams into the three ownership super-groups.
 DOMAINS = [
