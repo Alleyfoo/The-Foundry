@@ -270,7 +270,7 @@ with tab_boxes:
 FLOWS = [
     ("1. Customer Signal Flow", ["OBJ-C001", "OBJ-C002", "OBJ-C003", "OBJ-C004", "OBJ-C005"]),
     ("2. Item Creation Flow", ["OBJ-I001", "OBJ-I002", "OBJ-I003", "OBJ-I004", "OBJ-I005"]),
-    ("3. Supplier / Reference Flow", ["OBJ-S001", "OBJ-S002", "OBJ-S003", "OBJ-S004"]),
+    ("3. Supplier / Reference Flow", ["OBJ-S001", "OBJ-S002", "OBJ-S003", "OBJ-X001", "OBJ-S004"]),
     ("4. Price Flow", ["OBJ-P001", "OBJ-P002", "OBJ-P003", "OBJ-P004"]),
     ("5. Product Creation Flow", ["OBJ-N001", "OBJ-N002", "OBJ-N003", "OBJ-A001"]),
 ]
