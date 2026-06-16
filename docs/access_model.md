@@ -39,9 +39,12 @@ Each is produced by `Foundry._detect_mismatches` and surfaced in the app's
 **Access Mismatches** tab and the shadow log.
 
 ### 1. Approval without authority — `approval_without_authority`
-A `control`-box object is routed to an `approver_role` that has no control access
-in `roles.json` (`box_access.control` = Manager, Director).
-**Reading:** someone is approving a change they are not authorised to govern.
+A truth-touching change (create / modify / control), not yet committed, is routed to
+an `approver_role` that has no control access in `roles.json`
+(`box_access.control` = Manager, Director, SAP Owner).
+**Reading:** someone is approving a change they are not authorised to govern — whether
+it is a control approval, a price modify, or a new-item create. A supplier price list
+routed to *Pricing* lands here: Pricing owns the number, but cannot make it truth.
 
 ### 2. Ownership without flow — `ownership_without_flow`
 An object is `blocked`. Its `owner_team` is accountable, but it cannot move.

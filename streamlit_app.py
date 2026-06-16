@@ -180,6 +180,87 @@ with tab_scenario:
             st.markdown(f"- {line}")
         st.caption("Use **Reset to seed** in the sidebar to replay.")
 
+    # --- Second story: the catch. Approval without authority. ---
+    st.divider()
+    ui.section_header(
+        "A supplier price change — the catch",
+        "The same spine, run on a different change. This one is stopped before it can "
+        "become truth, because the person approving it isn't allowed to.")
+    st.markdown(
+        "**The story.** A supplier emails a new price list. Most systems would route it "
+        "to whoever owns pricing and let them push it through. The Foundry routes it the "
+        "same way — and then checks one more thing: *is the approver actually authorised "
+        "to make this a governed truth?*")
+
+    # A transient change — never written to the system of record. It exists only to be
+    # run through the real detection engine, so the flag below is genuine, not narrated.
+    px1 = {
+        "object_id": "OBJ-PX1",
+        "object_type": "Price Change",
+        "world": "outside",
+        "title": "Acme Brackets — new price list (rev C)",
+        "box": "modify",
+        "stream": "supplier",
+        "owner_team": "Pricing",
+        "state": "pending",
+        "commitment": "workflow",
+        "confidence": 0.55,
+        "aging_days": 0,
+        "approver_role": "Pricing",
+        "source_input": "email",
+        "lifecycle": "none",
+        "evidence": ["email:acme-pricelist-revC.pdf"],
+        "downstream": [],
+        "system_of_record_ref": None,
+    }
+
+    if st.button("▶  Run the supplier price change", type="primary", key="px_run"):
+        st.session_state["px_played"] = True
+
+    if st.session_state.get("px_played"):
+        # Run the transient object through the real engine — same code as the live pipeline.
+        flags = Foundry(base_dir=str(BASE_DIR))._detect_mismatches(
+            [px1], result["boxes"], access["box_access"])
+        authority_flag = next(
+            (f for f in flags if f["type"] == "approval_without_authority"), None)
+        ctrl = access["box_access"].get("control", {})
+        authorised = [ctrl.get("primary"), *ctrl.get("also", [])]
+
+        beats = [
+            ("📧", "A supplier sends a new price list by email.",
+             "`email:acme-pricelist-revC.pdf` — Acme Brackets, rev C."),
+            ("🔥", "The system extracts a price change object.",
+             f"`{px1['object_id']}` · *{px1['title']}*"),
+            ("✏️", "It is routed into **modify**.",
+             "Not a new record — a change to existing reality."),
+            ("⚠️", "It affects live product / pricing truth.",
+             "`modify` is a truth-touching box. This is governed change, not a note."),
+            ("👤", f"It has an owner — **{px1['owner_team']}**.",
+             "Someone is accountable for the change."),
+            ("🛡️", f"It needs an approver — routed to **{px1['approver_role']}**.",
+             "Nothing touching truth moves without a named approver."),
+            ("🚫", f"The approver lacks control authority.",
+             f"Only {', '.join(authorised)} can act in Control. "
+             f"**{px1['approver_role']}** cannot."),
+            ("🔴", "The Foundry flags: **approval without authority**.",
+             authority_flag["detail"] if authority_flag else "(no flag)"),
+            ("✋", "Nothing is committed.",
+             "The change is held in flight. No silent write to the system of record."),
+        ]
+        for icon, head, detail in beats:
+            st.markdown(f"{icon}  **{head}**  \n&nbsp;&nbsp;&nbsp;{detail}")
+
+        if authority_flag:
+            st.error(
+                "🛡️ **Approval without authority.** "
+                f"`{px1['object_id']}` would change pricing truth, but its approver "
+                f"(*{px1['approver_role']}*) is not authorised to act in Control. "
+                "The change is **not committed** — it is routed to someone who can "
+                "actually own that decision.")
+        st.caption(
+            "This is the difference. Process tools ask *where work moves*. The Foundry "
+            "also asks *whether the people moving it are allowed to make it true.*")
+
 # --- Intake (drop in chaos) ---
 with tab_intake:
     ui.section_header(

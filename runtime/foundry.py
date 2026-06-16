@@ -409,13 +409,16 @@ class Foundry:
                 out.append({"object_id": oid, "type": "editable_without_approver",
                             "detail": f"{box} object can change truth but has no approver"})
 
-            # Control (approval) routed to a role that has no control access.
-            if box == "control" and approver:
+            # Any change that can become truth, routed to an approver who lacks
+            # control authority — not just the control box. A price edit, a new
+            # item, a master-data modify: if it touches live truth and the named
+            # approver cannot act in control, that is approval without authority.
+            if box in touches_truth and approver and not committed:
                 allowed = {box_access.get("control", {}).get("primary")}
                 allowed |= set(box_access.get("control", {}).get("also", []))
                 if approver not in allowed:
                     out.append({"object_id": oid, "type": "approval_without_authority",
-                                "detail": f"approver '{approver}' is not authorised for control"})
+                                "detail": f"approver '{approver}' lacks control authority for this {box} change"})
 
             # Owner is accountable but the object is stuck — responsibility without flow.
             if state == "blocked":

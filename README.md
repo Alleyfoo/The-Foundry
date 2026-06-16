@@ -1,15 +1,22 @@
 # 🔥 The Foundry
 
-**Turning incoming business chaos into trusted, structured change.**
+**Authority-aware governance for business change.**
 
-Most business systems describe a company through job titles and departments. But
-day-to-day reality is messier than an org chart: requests arrive by email, PDF,
-Excel, and chat; things get stuck; nobody is sure who owns what. The Foundry is a
-governance layer that takes that incoming chaos and forges it into trusted,
-structured, *owned* change before it is allowed to become truth.
+A supplier emails a new price list. Someone in pricing pushes it through. The new
+number is now live in SAP — except the person who approved it was never authorised
+to make pricing decisions. Nobody noticed, because the system only checked *that* an
+approval happened, not *whether the approver had the authority to give it.*
 
-> Org charts show hierarchy. The Foundry shows the organisation through **access** —
-> who can act on what, as objects flow from chaos toward trusted truth.
+That gap — between who touched a change and who was actually allowed to make it
+true — is what the Foundry governs. It takes incoming chaos (email, PDF, Excel,
+chat, forms) and forges each change into a structured, *owned* object, then refuses
+to let it become truth unless the right authority, responsibility, and confidence
+are all present.
+
+> **This is not process mining.** Process tools (Celonis) ask *where work moves*.
+> Automation tools (UiPath) ask *how to make it move faster*. Neither asks the
+> governance question: do the people moving this change have the **authority,
+> responsibility, and confidence** for it to become trusted truth? The Foundry does.
 
 > *Users see tools. The system sees governed change.*
 
@@ -20,7 +27,9 @@ structured, *owned* change before it is allowed to become truth.
 A job title says what someone is **called**. Access shows what they can **affect**.
 The Foundry models a company not as a tree of titles, but as **objects in motion**,
 each carrying an **owner, a state, and a lifecycle** — and it makes the access
-behind that motion explicit.
+behind that motion explicit. The novel primitive is the gate at the end of the
+spine: a change becomes *trusted truth* only when authority, responsibility, and
+confidence line up. Where they don't, the change is held and the mismatch is shown.
 
 **The spine** every change travels:
 
@@ -69,13 +78,17 @@ Reference cuts across every level.*
 Because access and responsibility are recorded **separately**, they can disagree —
 and the Foundry surfaces the gap instead of papering over it:
 
-- **Approval without authority** — a change routed to someone not authorised to control it.
+- **Approval without authority** — *any* truth-touching change (create, modify, or
+  control) routed to someone not authorised to act in Control. The supplier price
+  list above lands here.
 - **Ownership without flow** — an owner is accountable, but the object is blocked.
 - **Editable without an approver** — a change that can touch truth with nobody to sign off.
 - **Low-confidence truth** — something committed as truth that triage was unsure about.
 
 These are detected for real by the pipeline, not just described — see
 [`runtime/foundry.py`](runtime/foundry.py) and [`docs/access_model.md`](docs/access_model.md).
+The **Scenario** tab plays the supplier-price-change story end to end and stops at
+the flag, running a live object through the same detection engine.
 
 ---
 
@@ -111,8 +124,10 @@ pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
-Press **🔥 Run the Foundry** in the sidebar. The pipeline is self-contained — no
-Ollama or cloud LLM is needed.
+The pipeline runs automatically over the live system-of-record state; the sidebar
+has **Re-run pipeline** and **Reset to seed**. Start on the **Scenario** tab to watch
+a change travel the spine. The pipeline is self-contained — no Ollama or cloud LLM
+is needed.
 
 ## Deploying the demo (Streamlit Community Cloud)
 
@@ -128,9 +143,9 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-23 tests cover schema validation, the system of record, the actions/state-machine
-(including the access guard), and the pipeline (bottlenecks, mismatches, coverage,
-lenses), plus an AppTest render smoke test.
+24 tests cover schema validation, the system of record, the actions/state-machine
+(including the access guard), and the pipeline (bottlenecks, the generalized
+authority rule, mismatches, coverage, lenses), plus an AppTest render smoke test.
 
 ## License
 

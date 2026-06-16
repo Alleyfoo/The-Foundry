@@ -29,6 +29,24 @@ def test_detects_access_mismatches(tmp_path):
     assert "approval_without_authority" in types
 
 
+def test_authority_rule_covers_all_truth_touching_boxes(tmp_path):
+    """A modify/create change routed to a non-control approver is flagged too —
+    not just the control box. A legitimate SAP Owner commit is not."""
+    f = Foundry(base_dir=str(ROOT), artifacts_dir=str(tmp_path))
+    boxes = {"boxes": [{"id": "modify", "touches_live_truth": True}]}
+    box_access = {"control": {"primary": "Manager", "also": ["SAP Owner"]}}
+    base = {"object_id": "OBJ-T", "box": "modify", "state": "pending",
+            "owner_team": "Pricing", "commitment": "workflow", "confidence": 0.6}
+
+    unauthorised = f._detect_mismatches(
+        [dict(base, approver_role="Pricing")], boxes, box_access)
+    assert any(m["type"] == "approval_without_authority" for m in unauthorised)
+
+    authorised = f._detect_mismatches(
+        [dict(base, approver_role="SAP Owner")], boxes, box_access)
+    assert not any(m["type"] == "approval_without_authority" for m in authorised)
+
+
 def test_coverage_flags_control_gap(tmp_path):
     cov = _run(tmp_path)["coverage"]
     by_area = {(c["stream"], c["box"]): c for c in cov["matrix"]}

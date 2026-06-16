@@ -44,7 +44,7 @@
     "box_access": {
       "create":    { "primary": "Data Entry / Operations",      "also": ["Specialist / Analyst / Owner"] },
       "modify":    { "primary": "Specialist / Analyst / Owner", "also": ["Data Entry / Operations", "Manager"] },
-      "control":   { "primary": "Manager",                      "also": ["Director / Head of Function"] },
+      "control":   { "primary": "Manager",                      "also": ["Director / Head of Function", "SAP Owner"] },
       "plan":      { "primary": "Director / Head of Function",  "also": ["CEO / Executive", "Manager"] },
       "reference": { "primary": "All",                          "also": [] }
     }
