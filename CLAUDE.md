@@ -98,7 +98,7 @@ permission. Reference cuts across every level.
 /docs
     access_model.md     — the access model + the mismatches, in prose
 streamlit_app.py        — the web frontend (thin shell)
-requirements.txt        — streamlit + pandas (runtime is pure stdlib)
+requirements.txt        — streamlit + pandas + streamlit-agraph (runtime is pure stdlib)
 ```
 
 ---
@@ -106,9 +106,12 @@ requirements.txt        — streamlit + pandas (runtime is pure stdlib)
 ## Frontend (Streamlit)
 
 `streamlit_app.py` — light theme matching the design mockup, components in `ui.py`.
-Seven tabs: **Scenario** (guided walkthrough), **Objects** (intake + the clickable
-Object Explorer with a detail panel), **Governance Map** (the signal/flow view),
-**Ownership** (by domain), **Coverage** (governance grid + access mismatches),
+Eight tabs: **Signal Universe** (the centerpiece — an interactive clickable graph of
+the whole object set with a side detail panel, built on `streamlit-agraph`),
+**Scenario** (two guided walkthroughs: the Meridian onboarding story, and the
+supplier-price-change "approval without authority" catch), **Objects** (intake + the
+clickable Object Explorer with a detail panel), **Governance Map** (the signal/flow
+view), **Ownership** (by domain), **Coverage** (governance grid + access mismatches),
 **Bottlenecks & Risk** (bottlenecks + impact/approvals), **Model & Audit** (roles +
 five boxes + monitoring lenses + audit trail). The pipeline runs automatically over
 the live system-of-record state; the sidebar has Re-run + Reset-to-seed.

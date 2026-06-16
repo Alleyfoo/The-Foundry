@@ -165,7 +165,7 @@ class Foundry:
         for o in objects:
             if not o.get("approver_role") or o.get("commitment") == "truth":
                 continue
-            approvals.append(self._route_approval(o, impact_by_id, box_access))
+            approvals.append(self._route_approval(o, impact_by_id, box_access, truth_touching))
         self.store.write_json(ctx.run_id, "approvals.json", approvals)
         self.shadow.observe_task_end("foundry", "approval_routing", success=True,
                                      pending_approvals=len(approvals))
@@ -355,6 +355,7 @@ class Foundry:
         o: dict[str, Any],
         impact_by_id: dict[str, dict[str, Any]],
         box_access: dict[str, Any],
+        truth_touching: set[str],
     ) -> dict[str, Any]:
         """Route a pending object by confidence, risk, and ownership."""
         risk = impact_by_id.get(o["object_id"], {}).get("risk", "low")
@@ -365,11 +366,12 @@ class Foundry:
         # Urgency changes priority, not truthfulness.
         priority = "high" if (aging >= AGING_ALERT_DAYS or risk == "high") else "normal"
 
-        # Is the approver actually authorised to act in Control?
+        # Is the approver actually authorised to make this a governed truth? Same
+        # rule as _detect_mismatches: any truth-touching box, not just control.
         ctrl = box_access.get("control", {})
         ctrl_allowed = {ctrl.get("primary")} | set(ctrl.get("also", []))
-        if o["box"] == "control" and approver not in ctrl_allowed:
-            recommendation = "reroute — approver not authorised for control"
+        if o["box"] in truth_touching and approver not in ctrl_allowed:
+            recommendation = "reroute — approver lacks control authority"
         elif risk == "high" or conf < CONFIDENCE_LOW:
             recommendation = "needs human review"
         elif risk == "low" and conf >= CONFIDENCE_HIGH and o["box"] != "control":
