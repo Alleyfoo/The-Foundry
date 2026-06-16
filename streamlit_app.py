@@ -116,7 +116,7 @@ tab_story = tab_boxes = tab_lenses = tab_audit = tab_model
 DOMAINS = [
     ("Sales Domain", "👥", ["Sales"]),
     ("Product & Ops Domain", "📦", ["Product Manager", "Product Data", "Product Owner",
-                                    "Operations", "Suppliers"]),
+                                    "Operations", "Suppliers", "Research", "Production"]),
     ("Governance Domain", "🛡️", ["Pricing", "Finance", "Manager", "SAP Owner", "Records Owner"]),
 ]
 
@@ -272,6 +272,7 @@ FLOWS = [
     ("2. Item Creation Flow", ["OBJ-I001", "OBJ-I002", "OBJ-I003", "OBJ-I004", "OBJ-I005"]),
     ("3. Supplier / Reference Flow", ["OBJ-S001", "OBJ-S002", "OBJ-S003", "OBJ-S004"]),
     ("4. Price Flow", ["OBJ-P001", "OBJ-P002", "OBJ-P003", "OBJ-P004"]),
+    ("5. Product Creation Flow", ["OBJ-N001", "OBJ-N002", "OBJ-N003", "OBJ-A001"]),
 ]
 with tab_map:
     ui.section_header("Object Governance Map",

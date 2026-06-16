@@ -14,7 +14,7 @@ def _run(tmp_path):
 def test_pipeline_completes_and_validates(tmp_path):
     r = _run(tmp_path)
     assert r["status"] == "completed"
-    assert r["validation"].valid_records == 24
+    assert r["validation"].valid_records == 27
     assert r["validation"].is_valid
 
 

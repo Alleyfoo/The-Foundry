@@ -121,7 +121,7 @@ app (not just rerun) — Streamlit caches imported modules.
 
 ## Definition of done (current state — all met)
 
-- Governed objects load and validate against the object schema (24/24 valid).
+- Governed objects load and validate against the object schema (27/27 valid).
 - The pipeline triages, finds bottlenecks/aging, routes approvals, and reports commit status.
 - Access mismatches are detected for real and shown in the app + shadow log.
 - Monitoring lenses (customer/sales/product/operations/finance) derive from the same objects.

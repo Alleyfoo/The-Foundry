@@ -41,6 +41,8 @@ LENS_BY_TEAM = {
     "Pricing": "finance",
     "Finance": "finance",
     "Suppliers": "product",
+    "Research": "product",
+    "Production": "operations",
     "Manager": "operations",
 }
 

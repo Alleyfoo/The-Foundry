@@ -17,6 +17,7 @@
       "type": "string",
       "enum": [
         "Customer", "Contact", "Signal", "Feature Candidate", "Planning Review",
+        "Business Request", "Research Task", "Production Order",
         "Sales Request", "Item Request", "Validation Check", "Approval Task",
         "Item", "Price Proposal", "Price", "Availability", "Lifecycle", "Afterlife",
         "Supplier Document", "Reference Object", "Enrichment Task",
@@ -49,7 +50,7 @@
       "enum": [
         "Sales", "Product Data", "Pricing", "Operations", "Product Manager",
         "Product Owner", "Manager", "SAP Owner", "Records Owner", "Suppliers",
-        "Finance"
+        "Finance", "Research", "Production"
       ],
       "description": "Who owns this object — who is accountable when it is wrong. Ownership is not exclusive permission."
     },
