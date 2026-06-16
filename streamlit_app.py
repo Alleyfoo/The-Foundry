@@ -19,6 +19,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from streamlit_agraph import agraph, Node, Edge, Config
+
 from runtime.foundry import Foundry, load_objects
 from runtime.system_of_record import SystemOfRecord
 from runtime.actions import intake, triage_text, available_actions, apply_action
@@ -45,6 +47,17 @@ def get_sor() -> SystemOfRecord:
 def refresh(sor: SystemOfRecord) -> None:
     """Re-run the pipeline over the live system-of-record state."""
     st.session_state["result"] = Foundry(base_dir=str(BASE_DIR)).run(objects=sor.all_objects())
+
+
+def select_from_click(clicked: str, detector_key: str) -> None:
+    """Set the shared selection only when a component reports a NEW click.
+
+    Components return their last value on every rerun, so we de-dup per source to
+    avoid one view overriding a selection made in another.
+    """
+    if clicked and clicked != st.session_state.get(f"_last_{detector_key}"):
+        st.session_state[f"_last_{detector_key}"] = clicked
+        st.session_state["selected_id"] = clicked
 
 
 def to_df(records, columns=None) -> pd.DataFrame:
@@ -100,9 +113,9 @@ spine_badges[5] = ui.badge(f"{len(result['committed'])} committed", ui.GREEN, "#
 ui.spine(spine_badges)
 st.caption("Users see tools. The system sees governed change.")
 
-(tab_scenario, tab_objects, tab_map, tab_universe, tab_ownership,
+(tab_universe, tab_scenario, tab_objects, tab_map, tab_ownership,
  tab_coverage, tab_risk, tab_model) = st.tabs([
-    "▶ Scenario", "Objects", "Governance Map", "Signal Universe", "Ownership",
+    "🌌 Signal Universe", "▶ Scenario", "Objects", "Governance Map", "Ownership",
     "Coverage", "Bottlenecks & Risk", "Model & Audit",
 ])
 # Consolidated layout: several sub-views render into shared tabs. Entering a tab
@@ -304,19 +317,37 @@ with tab_map:
             width="stretch", height=min(40 + 35 * len(afterlife), 240),
         )
 
-# --- Signal Universe (the whole object graph) ---
+# --- Signal Universe (the centerpiece: interactive graph + docked detail) ---
 with tab_universe:
     ui.section_header("Signal Universe",
-                      "Every governed object and how it connects — the whole graph. "
+                      "Every governed object and how it connects — click a node to inspect it. "
                       "Fill = box, border = status, arrows = downstream impact.")
     ui.universe_legend()
-    st.graphviz_chart(ui.signal_universe_dot(objects), width="stretch")
-    uni_sel = st.selectbox("Inspect a node",
-                           [o["object_id"] for o in objects],
-                           format_func=lambda i: f"{i} — {obj_by_id[i]['object_type']}",
-                           key="uni_sel")
-    if uni_sel in obj_by_id:
-        ui.object_detail(obj_by_id[uni_sel], obj_by_id)
+    graph_col, detail_col = st.columns([2, 1])
+    with graph_col:
+        ids = {o["object_id"] for o in objects}
+        nodes = [
+            Node(id=o["object_id"], label=o["object_type"], title=o["object_id"],
+                 shape="dot", size=16, borderWidth=3,
+                 color={"background": ui.BOX_TINT.get(o["box"], "#eef2f7"),
+                        "border": ui.STATE_COLOR.get(o["state"], ui.MUTED)})
+            for o in objects
+        ]
+        edges = [
+            Edge(source=o["object_id"], target=d,
+                 color=ui.STATE_COLOR.get(obj_by_id[d]["state"], "#cbd5e1"))
+            for o in objects for d in o.get("downstream", []) if d in ids
+        ]
+        cfg = Config(width=720, height=560, directed=True, physics=True,
+                     nodeHighlightBehavior=True, highlightColor="#2563c9")
+        clicked = agraph(nodes=nodes, edges=edges, config=cfg)
+        select_from_click(clicked, "universe")
+    with detail_col:
+        usid = st.session_state.get("selected_id")
+        if usid and usid in obj_by_id:
+            ui.object_detail(obj_by_id[usid], obj_by_id)
+        else:
+            st.info("⬅ Click a node to open its detail panel.")
 
 # --- Ownership View (objects grouped by the domain that owns them) ---
 with tab_ownership:

@@ -2,3 +2,4 @@
 # The only external dependencies are for the Streamlit web frontend.
 streamlit==1.50.0
 pandas>=2.0
+streamlit-agraph>=0.0.45
