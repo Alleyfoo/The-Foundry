@@ -140,7 +140,7 @@ is needed.
 
 ```bash
 pip install -r requirements-dev.txt
-pytest
+python -m pytest
 ```
 
 24 tests cover schema validation, the system of record, the actions/state-machine

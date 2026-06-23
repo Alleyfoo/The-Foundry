@@ -72,7 +72,8 @@ records who can act in each box. Access ≠ title. Primary ownership ≠ exclusi
 permission. Reference cuts across every level.
 
 ### Mismatches the pipeline exposes (`runtime/foundry.py`)
-- `approval_without_authority` — control routed to a non-control role
+- `approval_without_authority` — any uncommitted truth-touching change
+  (create / modify / control) routed to a role without control authority
 - `ownership_without_flow` — owned but blocked
 - `editable_without_approver` — can touch truth, no approver
 - `low_confidence_truth` — committed as truth at low confidence
@@ -127,6 +128,8 @@ app (not just rerun) — Streamlit caches imported modules.
 - Governed objects load and validate against the object schema (27/27 valid).
 - The pipeline triages, finds bottlenecks/aging, routes approvals, and reports commit status.
 - Access mismatches are detected for real and shown in the app + shadow log.
+- The supplier price-change Scenario proves the generalized authority rule with a
+  transient object that is flagged before it can become truth.
 - Monitoring lenses (customer/sales/product/operations/finance) derive from the same objects.
 - Streamlit app renders every tab (verified via `streamlit.testing.v1.AppTest`).
 - README explains the model in plain language. MIT licensed.
@@ -138,7 +141,7 @@ app (not just rerun) — Streamlit caches imported modules.
 - Local first. No cloud dependency for core function. No Ollama needed.
 - The shadow agent logs to JSONL always, no exceptions.
 - Verify UI changes with `AppTest` (it executes the render path; a headless boot does not).
-- Tests live in `/tests` (pytest). Run: `pip install -r requirements-dev.txt && pytest`.
+- Tests live in `/tests` (pytest). Run: `pip install -r requirements-dev.txt && python -m pytest`.
 
 ---
 
