@@ -76,9 +76,9 @@ h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800
 /* Generic card + badges */
 .fdy-card { background:#fff; border:1px solid #e2e9f3; border-radius:14px;
             box-shadow:0 1px 2px rgba(15,42,77,.04); padding:18px; }
-.fdy-badge { font-family:ui-monospace,monospace; font-size:.66rem; letter-spacing:.04em;
+.fdy-badge { font-size:.66rem; font-weight:700; letter-spacing:.05em;
              padding:3px 8px; border-radius:6px; text-transform:uppercase; white-space:nowrap; }
-.fdy-id { font-family:ui-monospace,monospace; font-size:.7rem; color:#94a3b8; }
+.fdy-id { font-size:.7rem; color:#94a3b8; }
 
 /* Spine */
 .fdy-spine { display:flex; align-items:flex-start; gap:2px; flex-wrap:nowrap; justify-content:center;
@@ -130,7 +130,7 @@ h1, h2, h3, h4 { font-family: 'Archivo', system-ui, sans-serif; font-weight: 800
                display:flex; flex-direction:column; justify-content:center; }
 .fdy-covcell .n { font-weight:800; font-size:1.15rem; }
 .fdy-covcell .own { color:#5b6b7f; font-size:.6rem; margin-top:3px; line-height:1.15; }
-.cov-flag { font-family:ui-monospace,monospace; font-size:.62rem; }
+.cov-flag { font-size:.62rem; font-weight:700; }
 
 /* Object detail panel */
 .fdy-det { background:#fff; border:1px solid #e2e9f3; border-radius:14px; padding:18px; }
