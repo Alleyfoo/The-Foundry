@@ -28,7 +28,7 @@ import ui
 
 BASE_DIR = Path(__file__).resolve().parent
 
-BOX_ICON = {"create": "➕", "modify": "✏️", "plan": "📅", "control": "🛡️", "reference": "📄"}
+
 SOURCES = ["form", "email", "pdf", "excel", "chat", "api"]
 
 OBJ_COLS = ["object_id", "object_type", "title", "box", "stream",
@@ -75,7 +75,7 @@ def to_df(records, columns=None) -> pd.DataFrame:
 
 
 # ----------------------------------------------------------------------
-st.set_page_config(page_title="The Foundry", page_icon="🔥", layout="wide")
+st.set_page_config(page_title="The Foundry", layout="wide", initial_sidebar_state="expanded")
 ui.inject_css()
 sor = get_sor()
 if "result" not in st.session_state:
@@ -84,18 +84,29 @@ if "result" not in st.session_state:
 with st.sidebar:
     st.header("The Foundry")
     st.caption("Documents are inputs, not the truth. The truth is the structured record.")
-    if st.button("🔄  Re-run pipeline", width="stretch"):
+    if st.button("Re-run pipeline", width="stretch"):
         refresh(sor)
-    if st.button("♻️  Reset to seed", width="stretch"):
+    if st.button("Reset to seed", width="stretch"):
         sor.reset(load_objects(str(BASE_DIR / "data" / "objects.json")))
         refresh(sor)
         st.toast("Reset to seed objects.")
     st.divider()
-    st.markdown(
-        "**Three lenses on one truth**\n\n"
-        "🗺️ Map · 🛡️ Coverage · 🔀 Flow\n\n"
-        "_Users see tools. The system sees governed change._"
-    )
+    with st.expander("How to read this", expanded=not st.session_state.get("intro_read")):
+        st.markdown(
+            "**Start with the Signal Universe tab.** Every circle is a real business "
+            "object — a customer signal, an item, a supplier price change. Click one "
+            "to see who owns it, what state it's in, and what it affects downstream.\n\n"
+            "**The colours are the five boxes** — the governed action families every "
+            "change falls into: create, modify, plan, control, or reference.\n\n"
+            "**The Scenario tab** tells a concrete story: a new product variant "
+            "travels from a customer email to SAP truth — and the system catches "
+            "a stuck approval and an access mismatch along the way.\n\n"
+            "**Three lenses, one truth.** Map shows ownership. Coverage shows gaps. "
+            "Flow shows what is moving and what is stuck."
+        )
+        if st.button("Got it", width="stretch"):
+            st.session_state["intro_read"] = True
+            st.rerun()
 
 result = st.session_state["result"]
 objects = result["objects"]
@@ -115,7 +126,7 @@ st.caption("Users see tools. The system sees governed change.")
 
 (tab_universe, tab_scenario, tab_objects, tab_map, tab_ownership,
  tab_coverage, tab_risk, tab_model) = st.tabs([
-    "🌌 Signal Universe", "▶ Scenario", "Objects", "Governance Map", "Ownership",
+    "Signal Universe", "▶ Scenario", "Objects", "Governance Map", "Ownership",
     "Coverage", "Bottlenecks & Risk", "Model & Audit",
 ])
 # Consolidated layout: several sub-views render into shared tabs. Entering a tab
@@ -127,10 +138,10 @@ tab_story = tab_boxes = tab_lenses = tab_audit = tab_model
 
 # Domains group the owning teams into the three ownership super-groups.
 DOMAINS = [
-    ("Sales Domain", "👥", ["Sales"]),
-    ("Product & Ops Domain", "📦", ["Product Manager", "Product Data", "Product Owner",
+    ("Sales Domain", "", ["Sales"]),
+    ("Product & Ops Domain", "", ["Product Manager", "Product Data", "Product Owner",
                                     "Operations", "Suppliers", "Research", "Production"]),
-    ("Governance Domain", "🛡️", ["Pricing", "Finance", "Manager", "SAP Owner", "Records Owner"]),
+    ("Governance Domain", "", ["Pricing", "Finance", "Manager", "SAP Owner", "Records Owner"]),
 ]
 
 # --- Scenario (guided narrative walkthrough) ---
@@ -156,8 +167,8 @@ with tab_scenario:
     else:
         st.markdown(
             "**What the Foundry caught on this chain:**\n"
-            "- 🔴 **Bottleneck** — `OBJ-I004` pricing approval, blocked 7 days.\n"
-            "- 🛡️ **Access mismatch** — `OBJ-I003` validation check is routed to *Product "
+            "- **Bottleneck** — `OBJ-I004` pricing approval, blocked 7 days.\n"
+            "- **Access mismatch** — `OBJ-I003` validation check is routed to *Product "
             "Data*, who isn't authorised to act in Control.")
         SCENARIO = [
             ("OBJ-I004", "unblock", "Manager", "Manager clears the stuck pricing approval"),
@@ -170,7 +181,7 @@ with tab_scenario:
             log = []
             for oid, act, actor, note in SCENARIO:
                 r = apply_action(sor, oid, act, actor, access)
-                log.append(f"{'✅' if r['ok'] else '⚠️'} {note} — {r['message']}")
+                log.append(f"{'✓' if r['ok'] else '⚠'} {note} — {r['message']}")
             refresh(sor)
             st.session_state["scenario_log"] = log
             st.rerun()
@@ -227,32 +238,32 @@ with tab_scenario:
         authorised = [ctrl.get("primary"), *ctrl.get("also", [])]
 
         beats = [
-            ("📧", "A supplier sends a new price list by email.",
+            ("1", "A supplier sends a new price list by email.",
              "`email:acme-pricelist-revC.pdf` — Acme Brackets, rev C."),
-            ("🔥", "The system extracts a price change object.",
+            ("2", "The system extracts a price change object.",
              f"`{px1['object_id']}` · *{px1['title']}*"),
-            ("✏️", "It is routed into **modify**.",
+            ("3", "It is routed into **modify**.",
              "Not a new record — a change to existing reality."),
-            ("⚠️", "It affects live product / pricing truth.",
+            ("4", "It affects live product / pricing truth.",
              "`modify` is a truth-touching box. This is governed change, not a note."),
-            ("👤", f"It has an owner — **{px1['owner_team']}**.",
+            ("5", f"It has an owner — **{px1['owner_team']}**.",
              "Someone is accountable for the change."),
-            ("🛡️", f"It needs an approver — routed to **{px1['approver_role']}**.",
+            ("6", f"It needs an approver — routed to **{px1['approver_role']}**.",
              "Nothing touching truth moves without a named approver."),
-            ("🚫", f"The approver lacks control authority.",
+            ("7", "The approver lacks control authority.",
              f"Only {', '.join(authorised)} can act in Control. "
              f"**{px1['approver_role']}** cannot."),
-            ("🔴", "The Foundry flags: **approval without authority**.",
+            ("⚠", "The Foundry flags: **approval without authority**.",
              authority_flag["detail"] if authority_flag else "(no flag)"),
-            ("✋", "Nothing is committed.",
+            ("—", "Nothing is committed.",
              "The change is held in flight. No silent write to the system of record."),
         ]
-        for icon, head, detail in beats:
-            st.markdown(f"{icon}  **{head}**  \n&nbsp;&nbsp;&nbsp;{detail}")
+        for step, head, detail in beats:
+            st.markdown(f"**{step} · {head}**  \n&nbsp;&nbsp;&nbsp;{detail}")
 
         if authority_flag:
             st.error(
-                "🛡️ **Approval without authority.** "
+                "**Approval without authority.** "
                 f"`{px1['object_id']}` would change pricing truth, but its approver "
                 f"(*{px1['approver_role']}*) is not authorised to act in Control. "
                 "The change is **not committed** — it is routed to someone who can "
@@ -270,10 +281,10 @@ with tab_intake:
     raw = st.text_area("Raw input", placeholder="e.g. Customer Acme wants a waterproof handle variant")
     if raw.strip():
         preview = triage_text(raw)
-        st.info(f"Preview → box **{BOX_ICON.get(preview['box'],'')} {preview['box']}** · "
+        st.info(f"Preview → box **{preview['box']}** · "
                 f"stream **{preview['stream']}** · confidence **{preview['confidence']}**")
     src = st.selectbox("Source", SOURCES)
-    if st.button("🔥 Forge into an object", type="primary", disabled=not raw.strip()):
+    if st.button("Forge into an object", type="primary", disabled=not raw.strip()):
         obj = intake(sor, raw, src)
         refresh(sor)
         st.success(f"Created **{obj['object_id']}** → box `{obj['box']}`, "
@@ -342,7 +353,7 @@ with tab_story:
     ui.role_ladder(roles)
     st.markdown("**Who can act in each box** (access ≠ title):")
     acc_rows = [
-        {"Box": f"{BOX_ICON.get(b,'')} {b}", "Primary owner": v["primary"],
+        {"Box": b, "Primary owner": v["primary"],
          "Also touches": ", ".join(v["also"]) or "—"}
         for b, v in access["box_access"].items()
     ]
@@ -380,7 +391,7 @@ with tab_map:
         ui.flow_row(title, nodes)
         cols = st.columns(len(nodes))
         for c, o in zip(cols, nodes):
-            if c.button(f"🔍 {o['object_id']}", key=f"flow_{o['object_id']}", width="stretch"):
+            if c.button(o['object_id'], key=f"flow_{o['object_id']}", width="stretch"):
                 st.session_state["selected_id"] = o["object_id"]
                 st.rerun()
 
@@ -440,13 +451,13 @@ with tab_ownership:
         with col:
             members = [o for o in objects if o["owner_team"] in teams]
             st.markdown(
-                f'<div class="fdy-domhead"><b>{icon} {name}</b>'
+                f'<div class="fdy-domhead"><b>{name}</b>'
                 f'<span class="cnt">{len(members)} items</span></div>',
                 unsafe_allow_html=True,
             )
             for o in members:
                 st.markdown(ui.object_card(o), unsafe_allow_html=True)
-                if st.button(f"🔍 {o['object_id']}", key=f"own_{o['object_id']}", width="stretch"):
+                if st.button(o['object_id'], key=f"own_{o['object_id']}", width="stretch"):
                     st.session_state["selected_id"] = o["object_id"]
                     st.rerun()
     osid = st.session_state.get("selected_id")
@@ -519,10 +530,10 @@ with tab_mismatch:
         st.success("No access mismatches detected.")
     else:
         label = {
-            "approval_without_authority": "🛡️ Approval without authority",
-            "ownership_without_flow": "🔴 Ownership without flow (blocked)",
-            "editable_without_approver": "✏️ Editable without a declared approver",
-            "low_confidence_truth": "🔒 Committed as truth at low confidence",
+            "approval_without_authority": "Approval without authority",
+            "ownership_without_flow": "Ownership without flow (blocked)",
+            "editable_without_approver": "Editable without a declared approver",
+            "low_confidence_truth": "Committed as truth at low confidence",
         }
         for m in ms:
             o = obj_by_id.get(m["object_id"], {})
